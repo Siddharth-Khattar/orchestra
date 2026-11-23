@@ -1,0 +1,23 @@
+{
+  "tracker": "github",
+  "profile": "mvp",
+  "research": "on-demand",
+  "build": "implement-spec",
+  "reviewFixRounds": 1,
+  "landing": "pr-agent",
+  "push": "ask",
+  "buildStart": "ask",
+  "test": null,
+  "uat": "off",
+  "upstream": {
+    "discuss": ".claude/skills/grilling/SKILL.md",
+    "domain": ".claude/skills/domain-modeling/SKILL.md",
+    "spec": ".claude/skills/to-spec/SKILL.md",
+    "tickets": ".claude/skills/to-tickets/SKILL.md",
+    "buildSpec": ".claude/skills/implement-spec/SKILL.md",
+    "buildTicket": ".claude/skills/implement/SKILL.md",
+    "land": ".claude/skills/pr/SKILL.md",
+    "map": ".claude/skills/ask-matt/SKILL.md",
+    "setup": ".claude/skills/setup-matt-pocock-skills/SKILL.md"
+  }
+}
