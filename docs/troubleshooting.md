@@ -2,6 +2,12 @@
 
 Orc is built to stop early and say why. A command that cannot go on prints its banner, a short message and a pointer, and changes nothing. This page lists those stops, what to do about each, and the limits of v1.
 
+- [Reading a stop](#reading-a-stop)
+- [Stops before anything is judged](#stops-before-anything-is-judged)
+- [Stops by situation](#stops-by-situation)
+- [Things that go wrong mid-run](#things-that-go-wrong-mid-run)
+- [Limits of v1](#limits-of-v1)
+
 ## Reading a stop
 
 ```
@@ -20,22 +26,22 @@ When in doubt, run `/orc`. It is read-only, it judges everything afresh, and its
 
 ## Stops before anything is judged
 
-Every command checks these first, in this order.
+Every command checks these first, in this order. `/orc` is the exception for the registry and `gh` ones (8 to 11): it does not stop on them, and shows the message or a `Gh:` line inside its report instead.
 
-| Message | What to do |
-|---|---|
-| Not inside a git repository, and orc needs one. | `git init`, then `/orc-setup` |
-| This directory is in another repository than the one orc is installed in... | Start the session in the repo that holds `.claude/skills/orc/`. A nested clone, a submodule and a user-level install all end here ([why](how-it-works.md#what-the-script-reads)) |
-| orc needs Node 24.3.0 or newer... | Install a newer Node. A Node that does not strip TypeScript types by default (one older than 22.18, or a 23.x older than 23.6) cannot load the script at all, and you get Claude Code's own error instead |
-| This repo has no commits yet, so it has no default branch. | Run `/orc-setup` and take the commit it offers |
-| orc cannot tell the default branch... | `git remote set-head origin --auto`, or name the branch `main` |
-| This repo is not set up for orc: docs/orc/config.json does not exist. | `/orc-setup` |
-| docs/orc/config.json is incomplete: push (missing), landing (unknown value)... | `/orc-setup` fills in missing keys and replaces invalid values from the template. A file that is not valid JSON gets the same pointer: setup then treats the whole file as missing and writes it again, so check the values it shows afterwards |
-| No registry yet: docs/orc/registry.md does not exist. | `/orc-discuss`, which runs the project interview |
-| docs/orc/registry.md has no ## Roadmap heading, so it is broken, not an empty roadmap. | Restore the `## Roadmap` heading in the registry, then `/orc` |
-| docs/orc/registry.md has roadmap lines that are not entries: line 41 not-kebab-case... | Give each such line a kebab-case name no other entry has, or delete a line that repeats an entry |
-| gh is not installed / not logged in, and this step needs it. | Install `gh`, then `gh auth login` |
-| This session did not start at the checkout root... (`/orc-setup` only) | Start Claude Code at the repo root for setup. Every other command works from a subdirectory |
+| # | Message | What to do |
+|---|---|---|
+| 1 | Not inside a git repository, and orc needs one. | `git init`, then `/orc-setup` |
+| 2 | This directory is in another repository than the one orc is installed in... | Start the session in the repo that holds `.claude/skills/orc/`. A nested clone, a submodule and a user-level install all end here ([why](how-it-works.md#what-the-script-reads)) |
+| 3 | orc needs Node 24.3.0 or newer... | Install a newer Node. A Node that does not strip TypeScript types by default (one older than 22.18, or a 23.x older than 23.6) cannot load the script at all, and you get Claude Code's own error instead |
+| 4 | This repo has no commits yet, so it has no default branch. | Run `/orc-setup` and take the commit it offers |
+| 5 | orc cannot tell the default branch... | `git remote set-head origin --auto`, or name the branch `main` |
+| 6 | This repo is not set up for orc: docs/orc/config.json does not exist. | `/orc-setup` |
+| 7 | docs/orc/config.json is incomplete: push (missing), landing (unknown value)... | `/orc-setup` fills in missing keys and replaces invalid values from the template. A file that is not valid JSON gets the same pointer: setup then treats the whole file as missing and writes it again, so check the values it shows afterwards |
+| 8 | No registry yet: docs/orc/registry.md does not exist. | `/orc-discuss`, which runs the project interview |
+| 9 | docs/orc/registry.md has no ## Roadmap heading, so it is broken, not an empty roadmap. | Restore the `## Roadmap` heading in the registry, then `/orc` |
+| 10 | docs/orc/registry.md has roadmap lines that are not entries: line 41 not-kebab-case... | Give each such line a kebab-case name no other entry has, or delete a line that repeats an entry |
+| 11 | gh is not installed / not logged in, and this step needs it. | Install `gh`, then `gh auth login` |
+| 12 | This session did not start at the checkout root... (`/orc-setup` only) | Start Claude Code at the repo root for setup. Every other command works from a subdirectory |
 
 ## Stops by situation
 
@@ -82,6 +88,10 @@ Every command checks these first, in this order.
 - **Claude Code only**, with GitHub Issues or local markdown as the tracker.
 - **One simple test command.** No `&&`, pipes or substitutions in `test`; wrap them in a script.
 - **GitHub author association stands in for write access.** In an organisation whose members have less than write access to the repo, their `Part of #<n>` issues and pending-decision comments still count.
-- **Checkout paths holding `"`, `$` or a backtick are unsupported.** Spaces, `[` and `*` are fine.
+- **Checkout paths holding `"`, `$`, a backtick or a backslash are unsupported.** Spaces, `[` and `*` are fine.
 - **The status script reads `origin` as last fetched.** It never fetches. `/orc-land` is the one command that fetches before it judges.
 - **No partial landing and no automatic conflict resolution.** A conflict always stops the run for you to resolve.
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [How it works](how-it-works.md)

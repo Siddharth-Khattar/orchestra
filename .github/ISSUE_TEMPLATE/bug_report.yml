@@ -1,0 +1,75 @@
+name: Bug report
+description: A command stopped when it should not have, did the wrong thing, or showed something confusing.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The [troubleshooting page](https://github.com/Siddharth-Khattar/orchestra/blob/main/docs/troubleshooting.md) covers the common stops and the known limits of v1, so it may be worth a quick look first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The orc command you ran, with its argument if you gave one.
+      placeholder: /orc-build memo-cli
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Banner, stop message or pointer
+      description: The text orc printed, pasted as is. The banner at the start and the last line of the run help the most.
+      render: text
+  - type: textarea
+    id: status-json
+    attributes:
+      label: Status output
+      description: |
+        The output of `node .claude/skills/orc/status.mts orc --json`, run from the root of the repo where orc is installed. The script is read-only.
+        The JSON form can contain issue titles, file names and your test command. Please redact anything private before pasting.
+      render: json
+  - type: dropdown
+    id: tracker
+    attributes:
+      label: Tracker
+      options:
+        - GitHub Issues
+        - Local markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: landing
+    attributes:
+      label: Landing mode
+      description: The mode of the entry involved, if the problem relates to one.
+      options:
+        - local-merge
+        - pr-agent
+        - pr-human
+        - Not applicable
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      description: The output of `node --version`.
+      placeholder: v24.3.0
+    validations:
+      required: true
+  - type: input
+    id: claude-code-version
+    attributes:
+      label: Claude Code version
+      description: The output of `claude --version`.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Ubuntu 24.04, Windows 11 with WSL

@@ -1,0 +1,251 @@
+<!doctype html>
+<!-- ABOUTME: Figure "architecture": how one command runs, from typing it to the skills doing the writing. -->
+<!-- ABOUTME: The dashed boundary marks the status script as read-only; every write happens outside it. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="figure-height" content="522">
+<title>orc: how a command runs</title>
+<link rel="stylesheet" href="figure.css">
+<script src="figure.js"></script>
+<style>
+  /*
+   * Fixed grid, in CSS px.
+   *   Columns: A 0-214   B 282-518 (boundary 258-542)   C 566-838
+   *   Rows:    1 at 0-100   2 at 136-356 (the boundary)   3 at 400-500, with one wire below it
+   * Filled cards are the actors; outlined boxes are what gets read or written.
+   */
+  .figure {
+    position: relative;
+    height: 100%;
+  }
+
+  .card,
+  .store {
+    position: absolute;
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+
+  .card {
+    background: var(--surface);
+  }
+
+  .store {
+    border: 1px solid var(--hairline);
+    padding: 15px 17px;
+  }
+
+  .col-a { left: 0; width: 214px; }
+  .col-b { left: 282px; width: 236px; }
+  .col-c { left: 566px; width: 272px; }
+
+  .row-1 { top: 0; height: 100px; }
+  .row-3 { top: 400px; height: 100px; }
+
+  .title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: -0.01em;
+  }
+
+  .title code {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .detail {
+    margin-top: 4px;
+    font-size: 15px;
+    line-height: 21px;
+    color: var(--muted);
+  }
+
+  .detail code {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  /* What the script reads. */
+  .source {
+    position: absolute;
+    left: 0;
+    width: 214px;
+    height: 40px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .source code {
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .script {
+    top: 160px;
+    height: 84px;
+  }
+
+  .boundary-label {
+    position: absolute;
+    left: 282px;
+    top: 264px;
+    width: 236px;
+    font-size: 15px;
+    line-height: 21px;
+    color: var(--muted);
+  }
+
+  .boundary-label strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    color: var(--accent);
+  }
+
+  .verdict {
+    top: 132px;
+    height: 140px;
+  }
+
+  .outcomes {
+    list-style: none;
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .outcomes li {
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--muted);
+  }
+
+  .outcomes code {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .wire-label {
+    position: absolute;
+    font-size: 14px;
+    line-height: 18px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  svg.wires {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .wire {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .boundary {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 5;
+  }
+</style>
+</head>
+<body>
+  <div class="figure">
+    <svg class="wires" aria-hidden="true">
+      <!-- The read-only boundary: the status script and nothing else. -->
+      <rect class="boundary" x="258.75" y="136.75" width="282.5" height="218.5" rx="16"/>
+
+      <!-- You type the command; Claude Code receives it. -->
+      <path class="wire" d="M216 50 H280 M274 45 L280 50 L274 55"/>
+
+      <!-- Claude Code runs the command injected at the end of SKILL.md. -->
+      <path class="wire" d="M400 102 V158 M395 152 L400 158 L405 152"/>
+
+      <!-- The sources join one bus that enters the script: reading goes one way. -->
+      <path class="wire" d="M216 168 H236 M216 220 H236 M216 272 H236 M216 324 H236 M236 168 V324"/>
+      <path class="wire" d="M236 202 H280 M274 197 L280 202 L274 207"/>
+
+      <!-- The verdict is the only thing that leaves the boundary. -->
+      <path class="wire" d="M520 202 H564 M558 197 L564 202 L558 207"/>
+
+      <!-- The orc skill acts on the verdict. -->
+      <path class="wire" d="M702 274 V398 M697 392 L702 398 L707 392"/>
+
+      <!-- The skill briefs upstream; both write to the repo and the tracker. -->
+      <path class="wire" d="M564 450 H520 M526 445 L520 450 L526 455"/>
+      <path class="wire" d="M280 450 H216 M222 445 L216 450 L222 455"/>
+      <path class="wire" d="M702 502 V508 Q702 514 696 514 H113 Q107 514 107 508 V502 M102 508 L107 502 L112 508"/>
+    </svg>
+
+    <div class="card col-a row-1">
+      <div class="title">You</div>
+      <div class="detail">type <code>/orc-build</code></div>
+    </div>
+
+    <div class="card col-b row-1">
+      <div class="title">Claude Code</div>
+      <div class="detail">runs the command at the end of <code>SKILL.md</code></div>
+    </div>
+
+    <div class="source" style="top:148px"><code>git</code></div>
+    <div class="source" style="top:200px"><code>gh</code><span>with GitHub</span></div>
+    <div class="source" style="top:252px"><code>docs/orc/config.json</code></div>
+    <div class="source" style="top:304px"><code>docs/orc/registry.md</code></div>
+
+    <div class="card col-b script">
+      <div class="title"><code>status.mts</code></div>
+      <div class="detail">judges and reports</div>
+    </div>
+
+    <div class="boundary-label"><strong>Read-only</strong>changes no ref, index, file or tracker state</div>
+
+    <div class="card col-c verdict">
+      <div class="title">Verdict</div>
+      <ul class="outcomes">
+        <li><code>stop</code><span>cannot run here</span></li>
+        <li><code>pick</code><span>the target needs you</span></li>
+        <li><code>go</code><span>every precondition holds</span></li>
+      </ul>
+    </div>
+
+    <div class="card col-c row-3">
+      <div class="title">orc skill</div>
+      <div class="detail">acts on the verdict and briefs upstream</div>
+    </div>
+
+    <div class="wire-label" style="left:518px; top:426px; width:48px">briefs</div>
+
+    <div class="card col-b row-3">
+      <div class="title">Upstream skill</div>
+      <div class="detail"><code>implement-spec</code>, followed as written, does the work</div>
+    </div>
+
+    <div class="wire-label" style="left:214px; top:426px; width:68px">writes</div>
+
+    <div class="store col-a row-3">
+      <div class="title">Your repo and tracker</div>
+      <div class="detail">code, docs and commits; issues and PRs</div>
+    </div>
+  </div>
+</body>
+</html>

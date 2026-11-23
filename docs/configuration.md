@@ -2,6 +2,13 @@
 
 Everything orc can be told lives in one committed file, `docs/orc/config.json`, which `/orc-setup` writes. You can edit any value by hand whenever you like, and it applies from the next command. The status script reads it from the default branch: the working copy while you are on that branch, the committed tip from anywhere else. Since the file is also one of orc's own paths, commit the edit before the next `/orc-build`, which will not start while those paths are dirty.
 
+- [Keys](#keys)
+- [Profiles](#profiles)
+- [The push setting](#the-push-setting)
+- [The test command](#the-test-command)
+- [Upstream roles](#upstream-roles)
+- [Updating](#updating)
+
 This is the file from the run in the [guide](guide.md):
 
 ```json
@@ -58,7 +65,7 @@ A profile is a set of starting values and nothing more. Setup writes them into t
 | mvp | on-demand | implement-spec | 1 | pr-agent | ask |
 | production | always | implement | 2 | pr-human | ask |
 
-`push` starts at `ask` in all three. Choosing another profile in a later `/orc-setup` run rewrites these five keys, hand edits included, as its question says. Both PR modes need a GitHub remote and `gh`; without them setup offers to fall back to `local-merge`.
+`push` starts at `ask` in all three. Choosing another profile in a later `/orc-setup` run rewrites these five keys, hand edits included, as its question says. Both PR modes need a GitHub remote and `gh`. Without them, setup offers to fall back to `local-merge` when the tracker is local markdown, while with the GitHub tracker it stops, since the tracker needs them as well.
 
 ## The push setting
 
@@ -111,3 +118,7 @@ npx skills@1 add Siddharth-Khattar/orchestra -a claude-code --copy -y
 A spec branch cut before the update carries the older copies until the default branch is merged into it, which `/orc-build` and `/orc-land` both do when they pick the branch up again.
 
 **Settings.** Edit `docs/orc/config.json`, or run `/orc-setup` and choose "Go through the setup questions again".
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [Troubleshooting](troubleshooting.md)

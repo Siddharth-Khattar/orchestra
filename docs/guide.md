@@ -2,7 +2,7 @@
 
 This walk-through follows one real run: a tiny CLI called `memo`, built in a repo that held nothing but a README. It used the local markdown tracker and the hackathon profile, so there is no GitHub in it; [the last section](#what-changes-on-github) says what differs when there is. Everything quoted below is what the commands printed or asked, shortened where it ran long.
 
-The whole run is eight commands:
+The whole run is eight commands, and the sections below carry the same numbers:
 
 | Step | Command | Session | Leaves behind |
 |---|---|---|---|
@@ -104,7 +104,7 @@ A `Landing:` line is what marks an entry as discussed. The pointer now reads:
 Done. Next: /orc-spec memo-cli   (memo-cli is discussed, no spec yet; run it in the interview's session)
 ```
 
-## 4. Spec and tickets, in the same session
+## 4. The spec, in the same session
 
 The pointer asks you to stay in the session because upstream's `to-spec` synthesises the spec from the conversation you have just had. `/orc-spec` wrote `.scratch/memo-cli/spec.md`, which opens with the ids it relies on:
 
@@ -114,9 +114,11 @@ The pointer asks you to stay in the session because upstream's `to-spec` synthes
 Registry: REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06, REQ-07, REQ-08, REQ-09, REQ-10, D-01, D-02, D-03, D-04, D-05, D-06, D-07
 ```
 
-It also recorded the spec on the roadmap entry (`Spec:` and `Branch: spec/memo-cli`) and committed both as `docs: add memo-cli spec`. Three things the registry did not settle went under the spec's Further Notes as open questions instead of being decided silently. One of them comes back in step 6.
+It also recorded the spec on the roadmap entry (`Spec:` and `Branch: spec/memo-cli`) and committed both as `docs: add memo-cli spec`. Three things the registry did not settle went under the spec's Further Notes as open questions instead of being decided silently. One of them comes back during the build, in step 6.
 
-`/orc-tickets` then drafted a breakdown and put all of it in one picker: "Approve (Recommended)", "Too coarse", "Too fine" or "Change something". The first draft had three tickets; the answer was "Too fine", two were merged, and the second draft was approved. Each ticket file carries the ids it covers and its blockers:
+## 5. The tickets
+
+Still in that session, `/orc-tickets` drafted a breakdown and put all of it in one picker: "Approve (Recommended)", "Too coarse", "Too fine" or "Change something". The first draft had three tickets; the answer was "Too fine", two were merged, and the second draft was approved. Each ticket file carries the ids it covers and its blockers:
 
 ```markdown
 Satisfies: REQ-01, REQ-02, REQ-03, REQ-05, REQ-06, REQ-07, REQ-08, REQ-09, REQ-10, D-02, D-03
@@ -143,7 +145,7 @@ Off the main flow, ask upstream's /ask-matt.
 Done. Next: /orc-build memo-cli   (2 of 2 tickets to build; start it after /clear)
 ```
 
-## 5. Build, in a fresh session
+## 6. Build, in a fresh session
 
 After `/clear`, `/orc-build` needs nothing from the earlier conversation: the spec, the tickets and the registry lines they cite are all on disk. It normally asks before it starts, showing the branch it will use and the tickets it will build. The hackathon profile sets `buildStart` to `always`, so here it printed that and went ahead.
 
@@ -176,7 +178,7 @@ Refs: memo-cli/01
 Refs: memo-cli/02
 ```
 
-The `docs:` commits in between are record commits. They only touch files under `.scratch/memo-cli/` and need no trailer.
+The `docs:` commits in between are record commits. They only touch files under `.scratch/memo-cli/` and need no trailer. Concepts has a [figure of the whole chain](concepts.md#trailers-and-traceability) for this run, from `REQ-01` to the landing merge.
 
 **The pending decision.** `REQ-05` said a newline is written first whenever `.memo.txt` does not end with one. The spec and the ticket said "non-empty file". For a zero-byte file those cannot both hold, so the implementer followed the spec and the ticket and reported what it went against. Orc wrote that down instead of deciding it:
 
@@ -193,7 +195,7 @@ The run's report listed the tickets with their commits, the review findings it f
 Done. Next: /orc-discuss memo-cli   (every ticket is built; 1 decision to lock first)
 ```
 
-## 6. Lock the pending decision
+## 7. Lock the pending decision
 
 `/orc-discuss memo-cli` on a built entry opens with the pending lines, each as its own question with up to four per picker call: "Lock it as a new id (Recommended)" or "Reject it". Locking it produced a new requirement that supersedes the old one. The old line stays exactly as it was:
 
@@ -205,7 +207,7 @@ Done. Next: /orc-discuss memo-cli   (every ticket is built; 1 decision to lock f
 
 Rejecting would have kept `REQ-05` as written, and the rework would have become a new ticket through `/orc-tickets memo-cli`. You can also skip this step: `/orc-land` asks about pending lines and lets you land anyway.
 
-## 7. Land
+## 8. Land
 
 `/orc-land` (here run through `/orc-next`, which showed the same banner in its own picker first) prepares the branch before it asks anything: it merges `main` into `spec/memo-cli`, sets the tickets' `Status:` lines to resolved in one more record commit, and runs the test command on the result. Then comes the one confirmation, with everything you need to judge in the question:
 
@@ -233,7 +235,29 @@ Outward steps: merge spec/memo-cli into main with --no-ff; push main to origin (
 
 "Merge and push" made the merge commit `86aef5a` on `main`, pushed it, and deleted the local `spec/memo-cli`, which git now showed as merged.
 
-## 8. Afterwards
+Put together, the history from the tickets commit to the landing looks like this. The commits on `spec/memo-cli` up to `3815a1e` are the build from step 6, and the commit on `main` beside them is the lock from step 7:
+
+```mermaid
+gitGraph
+    commit id: "5e8d598 add tickets"
+    branch spec/memo-cli
+    commit id: "7adb5b1 feat, ticket 01"
+    commit id: "d544ecb mark built"
+    commit id: "12e54a6 feat, ticket 02"
+    commit id: "e0ce720 mark built"
+    commit id: "51273aa record pending"
+    commit id: "3815a1e review fix"
+    checkout main
+    commit id: "lock REQ-11"
+    checkout spec/memo-cli
+    commit id: "e9eca14 resolve pending"
+    merge main id: "1dcc325 merge main"
+    commit id: "7487b2a resolve tickets"
+    checkout main
+    merge spec/memo-cli id: "86aef5a landing"
+```
+
+## Afterwards
 
 ```text
 Docs: the working tree
@@ -251,16 +275,14 @@ To carry on, `/orc-discuss <new-name>` offers to add the entry at the end of the
 
 ## What changes on GitHub
 
-With the GitHub Issues tracker and a PR landing mode the commands are the same. These parts differ:
+With the GitHub Issues tracker and a PR landing mode the commands are the same, while the spec, the tickets and the pending record move from files under `.scratch/` to issues. The [tracker table in Concepts](concepts.md#trackers) lists every difference side by side. For this run it would have meant:
 
-| | Local markdown | GitHub Issues |
-|---|---|---|
-| Spec | `.scratch/<name>/spec.md` | an issue titled `<name>: ...`, recorded as `Spec: #37` |
-| Tickets | files in `.scratch/<name>/issues/` | sub-issues of the spec issue, with native blocking edges |
-| Trailer | `Refs: memo-cli/02` | `Refs: #40` |
-| Built mark | `**Status:** built` in the ticket file | the `built` label |
-| Pending decisions | `.scratch/<name>/pending-decisions.md` on the spec branch | one comment on the spec issue |
-| Resolved at landing | `**Status:** resolved` | a comment, then the issue is closed |
-| Before issues are created | nothing extra | a picker with the titles, as `push` says |
+- the spec recorded by its issue number, as in `Spec: #37`, instead of a path, and trailers reading `Refs: #40` where this run had `Refs: memo-cli/02`;
+- a picker with the issue titles before `/orc-spec` and `/orc-tickets` create anything, as `push` says;
+- the pending decision kept as one comment on the spec issue, and the tickets closed with a comment at landing instead of getting a `Status:` line.
 
 In `pr-agent` mode `/orc-land` pushes the branch, opens the PR, waits for the checks on the commit it tested and merges that commit. In `pr-human` it opens the PR and stops; once someone has merged it with a merge commit, `/orc-land` again finishes the entry. [Concepts](concepts.md#landing-modes) has the details.
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [Commands](commands.md)

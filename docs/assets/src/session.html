@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- ABOUTME: Figure "session": one /orc-build run in the guide's memo-cli repo, banner first and pointer last. -->
+<!-- ABOUTME: The terminal text is verbatim: banner lines from status.mts, pointer from docs/guide.md; only wrapping is added. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="figure-height" content="420">
+<title>orc: what a command looks like</title>
+<link rel="stylesheet" href="figure.css">
+<script src="figure.js"></script>
+<style>
+  .terminal {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 26px 28px 26px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 24px;
+    color: var(--text);
+  }
+
+  .banner-title {
+    font-weight: 500;
+    white-space: pre;
+  }
+
+  .banner {
+    display: grid;
+    grid-template-columns: 9ch 1fr;
+    margin-top: 6px;
+  }
+
+  .banner dt {
+    color: var(--muted);
+    white-space: pre;
+  }
+
+  .banner dd {
+    white-space: pre;
+  }
+
+  .elision {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 14px 0 14px 3px;
+  }
+
+  .elision span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .pointer {
+    white-space: pre;
+  }
+
+  .pointer .next {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .marker {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: var(--line) solid var(--accent);
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 23px;
+    text-align: center;
+    flex: none;
+  }
+
+  .terminal .marker {
+    position: absolute;
+    right: 24px;
+  }
+
+  .marker-banner {
+    top: 25px;
+  }
+
+  /* A quiet rule under marker 1 spans the whole banner it refers to. */
+  .banner-span {
+    position: absolute;
+    right: 36px;
+    top: 56px;
+    height: 162px;
+    border-left: var(--line) solid var(--hairline);
+  }
+
+  .marker-pointer {
+    bottom: 25px;
+  }
+
+  .notes {
+    list-style: none;
+    margin-top: 28px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .notes li {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .notes .marker {
+    margin-top: -1px;
+  }
+
+  .notes code {
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="banner-title">/orc-build  (GSD: execute-phase)</div>
+    <dl class="banner">
+      <dt>Runs:</dt>
+      <dd>upstream implement-spec or implement, with tdd and code-review,
+at their locked commits</dd>
+      <dt>Target:</dt>
+      <dd>memo-cli (none given: the active spec)</dd>
+      <dt>Reads:</dt>
+      <dd>orc's verdict, the spec, its tickets, the registry lines they cite</dd>
+      <dt>Writes:</dt>
+      <dd>code and tests on spec/&lt;name&gt;, every commit with its ticket's Refs: trailer</dd>
+      <dt>Outward:</dt>
+      <dd>none (no push, no PR; /orc-land lands the branch);
+GitHub, whatever push says: built labels and the pending-decisions comment</dd>
+    </dl>
+    <div class="elision" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="pointer">Done. Next: <span class="next">/orc-discuss memo-cli</span>   (every ticket is built; 1 decision to lock first)</div>
+    <div class="marker marker-banner">1</div>
+    <div class="banner-span" aria-hidden="true"></div>
+    <div class="marker marker-pointer">2</div>
+  </div>
+
+  <ol class="notes">
+    <li><div class="marker">1</div><div>Before anything happens, the banner says what will run, be written and go outward.</div></li>
+    <li><div class="marker">2</div><div>The last line points to the next step and says why.</div></li>
+  </ol>
+</body>
+</html>

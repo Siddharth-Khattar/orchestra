@@ -43,7 +43,7 @@ Three rules keep it trustworthy:
 
 - **Ids are append-only.** An id has at least two digits and is never edited, renumbered or reused. A change of mind is a new id that supersedes the old one, so everything that cited the old id still points at a real line.
 - **Roadmap entries are never renumbered, reordered, renamed or removed.** New ones go at the end, and the order is the build order. An entry taken out of the plan gets a `Dropped:` line and is skipped from then on.
-- **Only `/orc-discuss` writes ids, and only on the default branch.** `/orc-spec` adds an entry's `Spec:` and `Branch:` lines. Before each commit the run asks the status script whether any line that was already committed has changed or moved, and it has to answer `unchanged`.
+- **Only `/orc-discuss` writes ids, and only on the default branch.** `/orc-spec` adds an entry's `Spec:` and `Branch:` lines. Before either command commits its registry edit, the run asks the status script whether any line that was already committed has changed or moved, and it has to answer `unchanged`. Two commits have nothing to check and skip it: the project interview's, since no registry was committed before, and an `/orc-spec` rerun that only commits the lines an earlier run left behind.
 
 Only registry ids carry authority. A spec, a ticket or a brief cites ids, and an implementer follows the lines it was given. To see a line without opening the file:
 
@@ -69,18 +69,20 @@ stateDiagram-v2
     state "in-review" as inReview
     state "cleanup-pending" as cleanupPending
     [*] --> notStarted
-    notStarted --> discussed: orc-discuss
-    discussed --> specced: orc-spec
-    specced --> ticketed: orc-tickets
-    ticketed --> building: orc-build
+    notStarted --> discussed: /orc-discuss
+    discussed --> specced: /orc-spec
+    specced --> ticketed: /orc-tickets
+    ticketed --> building: /orc-build
     building --> built: last ticket built
-    built --> inReview: PR opened
+    built --> inReview: PR opened (PR modes only)
     built --> cleanupPending: merged
     inReview --> cleanupPending: PR merged
     cleanupPending --> landed: tracker items resolved
     built --> landed: merged and resolved
     landed --> building: ticket added later
 ```
+
+The diagram follows the main flow, so three states from the table below are not drawn: `squashed`, `unknown` and `dropped`. An entry can end up in any of them from several places, and none of them leads on to a next step by itself.
 
 | State | What the script saw | Next |
 |---|---|---|
@@ -100,7 +102,7 @@ stateDiagram-v2
 The definitions behind those rows:
 
 - A ticket is **built** once a commit on `spec/<name>` (or `origin/spec/<name>`) that the default branch does not hold carries its `Refs:` trailer. Labels and `Status:` lines play no part.
-- A ticket has **landed** once a commit carrying its trailer is reachable from the default branch, locally or on `origin` as last fetched.
+- A ticket has **landed** once a commit carrying its trailer is reachable from the default branch, locally or on `origin` as last fetched, and no commit on the spec branch that has yet to land carries it. Rework on a landed ticket therefore reads as built until it lands too.
 - An entry has landed when it has a spec, at least one ticket, and every ticket has landed. It is finished when its tracker items are resolved too: the issues closed, or the files' `Status:` reading `resolved`.
 - The **active spec** is the first entry that is neither dropped nor finished.
 
@@ -110,19 +112,12 @@ Since a landed ticket counts as built, adding a ticket to a landed entry simply 
 
 Every commit that implements a ticket ends with a trailer naming it: `Refs: #40` on GitHub, `Refs: memo-cli/02` with local markdown. A review fix that spans tickets carries one line per ticket. They all sit in the message's last paragraph, since that is the only place git reads trailers from.
 
-```mermaid
-flowchart LR
-    ids["Registry ids<br>REQ-01, D-03"]
-    spec["Spec<br>Registry: line"]
-    ticket["Ticket<br>Satisfies: line"]
-    commit["Commit<br>Refs: trailer"]
-    merge["Merge commit<br>on the default branch"]
-    spec -- "cites" --> ids
-    ticket -- "cites" --> ids
-    ticket -- "part of" --> spec
-    commit -- "names" --> ticket
-    merge -- "keeps" --> commit
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/traceability-dark.png">
+    <img src="assets/traceability-light.png" alt="How REQ-01 is traced. The registry line defines REQ-01; the spec's Registry: line cites it; ticket memo-cli/02 is part of the spec and cites REQ-01 on its Satisfies: line; commit 12e54a6 names memo-cli/02 in a Refs: trailer; merge commit 86aef5a on main keeps 12e54a6 in the history." width="838">
+  </picture>
+</p>
 
 So the question "which commits deliver `REQ-03`?" is a join: the tickets whose `Satisfies:` line holds the id, then the commits whose trailer names those tickets. This is also why orc lands with merge commits only. A squash or a rebase would replace the per-ticket commits, the join would break, and `/orc` reports such an entry as `squashed` instead of passing it off as landed.
 
@@ -137,8 +132,12 @@ One tracker per repo, chosen at setup and fixed once any entry has a spec.
 | Spec | an issue whose title starts with `<name>: ` | `.scratch/<name>/spec.md` |
 | Tickets | sub-issues of the spec issue, with GitHub's blocking edges | `.scratch/<name>/issues/<NN>-<slug>.md`, with a `Blocked by:` line |
 | Ticket reference | `#<n>` | `<name>/<NN>` |
+| Trailer | `Refs: #40` | `Refs: memo-cli/02` |
 | Built mark (display only) | the `built` label | `Status: built` |
+| Pending decisions | one comment on the spec issue | `.scratch/<name>/pending-decisions.md` on the spec branch |
 | Resolved | the issue is closed | `Status:` is `resolved`, `closed` or `done` |
+| At landing | a comment on each open issue, which is then closed | `Status:` set to `resolved` in one record commit |
+| Before the spec and tickets are created | a picker with the titles, as [`push`](configuration.md#the-push-setting) says | nothing extra: they are files in a commit |
 | Needs | an authenticated `gh` and a GitHub `origin` | nothing; the files are committed like everything else |
 
 Tickets stay open until the spec lands. The built marks are only for you to see: the trailers decide.
@@ -164,6 +163,16 @@ The pending record is a marker line followed by one line per conflict:
 ```
 
 With the local tracker it is `.scratch/<name>/pending-decisions.md`, committed on the spec branch. On GitHub it is one comment on the spec issue, and only a comment by an author with write access counts. A pending line has no authority: nothing cites it, and an implementer that sees one reads it as what the build already did.
+
+```mermaid
+flowchart LR
+    conflict["The build meets a conflict"] --> line["One line in the pending record"]
+    line --> ask{"/orc-discuss: lock or reject?"}
+    ask -- "lock" --> id["A new id, superseding the one it went against"]
+    ask -- "reject" --> ticket["What was written stays, and the rework becomes a new ticket"]
+    id --> gone["The line leaves the record"]
+    ticket --> gone
+```
 
 `/orc` shows the count ("1 decision to lock"), and `/orc-discuss <name>` walks through the lines. Locking one writes a new id, superseding the id it went against when it names one. Rejecting one keeps what was written, and the rework becomes a new ticket. Either way the line leaves the record, and an empty record is deleted. `/orc-land` asks before landing with lines still pending.
 
@@ -207,6 +216,35 @@ In `pr-human`, the PR has to be merged with "Create a merge commit". Once it is,
 
 ## What orc writes in your repo
 
+The whole footprint at a glance, with who writes each part. The table below has the detail.
+
+```
+your-repo/
+├── .claude/
+│   ├── skills/
+│   │   ├── orc*/                the install command: orc's skills, status script, templates
+│   │   └── <name>/              setup: upstream's skills, unmodified
+│   ├── rules/
+│   │   ├── orc.md               setup
+│   │   └── agent-skills.md      setup, on upstream's behalf
+│   ├── settings.json            setup: one key merged in
+│   └── worktrees/               build: implementer worktrees, ignored by git, removed once merged
+├── docs/
+│   ├── orc/
+│   │   ├── config.json          setup
+│   │   └── registry.md          discuss, spec
+│   ├── agents/                  upstream's setup
+│   └── adr/                     upstream domain-modeling, during interviews
+├── .scratch/<name>/             local tracker only
+│   ├── spec.md                  spec
+│   ├── issues/                  tickets; build and land update the Status: lines
+│   ├── notes/                   build
+│   └── pending-decisions.md     build writes it, discuss resolves it
+├── GLOSSARY.md                  upstream domain-modeling, during interviews
+├── skills-lock.json             the skills CLI
+└── .gitignore                   setup
+```
+
 | Path | Written by | Content |
 |---|---|---|
 | `.claude/skills/orc*/` | the install command | orc's eight skills, the status script and templates |
@@ -229,3 +267,7 @@ What orc never touches:
 - `CLAUDE.md` and `AGENTS.md` are never created or edited, by orc or by upstream's setup when it runs through `/orc-setup`. The block upstream would put there goes into `.claude/rules/agent-skills.md`, which Claude Code loads in every session as well.
 - Vendored upstream skill files are never edited, so an update is a clean overwrite.
 - Your history: no squash, rebase, reset or force-push, and a worktree that holds files is never removed without showing you what is in it.
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [Configuration](configuration.md)

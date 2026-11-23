@@ -10,6 +10,23 @@ Orc never edits upstream skill files, and it owns no execution engine.
 The earlier full-harness design lives on the `experimental` branch and is
 reference material only.
 
+This page is for maintainers and for anyone checking a detail the other docs
+only summarise. To use orc, the [guide](guide.md) and the
+[command reference](commands.md) are the shorter way in.
+
+- [1. Goals and non-goals](#1-goals-and-non-goals)
+- [2. Decisions](#2-decisions)
+- [3. Commands](#3-commands)
+- [4. What a developer does](#4-what-a-developer-does)
+- [5. Owned surface](#5-owned-surface)
+- [6. Files orc writes in a target repo](#6-files-orc-writes-in-a-target-repo)
+- [7. Skills](#7-skills)
+- [8. Registry](#8-registry)
+- [9. Config, profiles and the status script](#9-config-profiles-and-the-status-script)
+- [10. Rules file](#10-rules-file)
+- [11. Later releases, designed for now](#11-later-releases-designed-for-now)
+- [12. Done for v1](#12-done-for-v1)
+
 ## 1. Goals and non-goals
 
 Goals:
@@ -1560,7 +1577,7 @@ branches=<refs> unresolved=<references>`. A go for a spec build reads:
 orc verdict 1 orc-build go
 Stamp: 1a2b3c4 2026-11-22T09:14:03Z
 Origin: yes
-Banner:
+Banner: print first, before any tool call, as plain text without this indent, never in a code block
   /orc-build  (GSD: execute-phase)
   Runs:    upstream implement-spec or implement, with tdd and code-review, at their locked commits
   Target:  auth (none given: the active spec)
@@ -1610,7 +1627,7 @@ the lines as the file holds them; its `--json` form is `{ "schema": 1,
 with --project */ }`, with `lines` `null` for a key the registry lacks, and a
 lookup outside a repo or without a registry prints `orc lookup error:
 <reason>` (`{ "schema": 1, "error" }`). The locked-lines check prints `orc
-locked <stamp>: unchanged` or `orc locked <stamp>: changed: line <n>, ...`
+locked <commit>: unchanged` or `orc locked <commit>: changed: line <n>, ...`
 (`{ "schema": 1, "since", "changed": [<n>...] }`), and `orc locked error:
 <reason>` when the stamp is not a commit or a registry cannot be read.
 Control characters in text from files or the tracker never reach the output
@@ -1693,7 +1710,7 @@ escaped.
   command, that plus 1,000 for `/orc-next`, and 2,000 plus 100 per roadmap
   entry plus 120 per ticket of the target for `/orc`.
 - **Size independence**, in the same test: a fixture grows from 20 ids and
-  two entries (the first ticketed, the second discussed) to 300 ids and 30
+  two entries (the first building, the second discussed) to 300 ids and 30
   entries, every added id a requirement or decision of an added entry or a
   `-> project` decision, every other added entry with a spec and a ticket,
   and the first two entries unchanged. The text verdict of every step command

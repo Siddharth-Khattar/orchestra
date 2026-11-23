@@ -1,0 +1,139 @@
+<!doctype html>
+<!-- ABOUTME: Figure "traceability": how one requirement is cited from the registry down to the merge that lands it. -->
+<!-- ABOUTME: Every value comes from the memo-cli run in docs/guide.md; only the line wrapping is added. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="figure-height" content="707">
+<title>orc: from a requirement to its merge</title>
+<link rel="stylesheet" href="figure.css">
+<script src="figure.js"></script>
+<style>
+  .chain {
+    list-style: none;
+  }
+
+  .artifact {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 18px 22px 18px;
+  }
+
+  .artifact header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 24px;
+    margin-bottom: 8px;
+  }
+
+  .kind {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: -0.01em;
+  }
+
+  .where {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--muted);
+  }
+
+  .line {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 22px;
+    white-space: pre-wrap;
+  }
+
+  .prose {
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .prose code {
+    font-size: 14px;
+  }
+
+  /* The token each step cites, and the same token where it is defined. */
+  .cite {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 44px;
+    padding-left: 22px;
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  .link svg {
+    flex: none;
+    width: 12px;
+    height: 44px;
+    color: var(--muted);
+  }
+
+  .link code {
+    font-size: 14px;
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+  <!-- One arrow, pointing up at the artifact being cited. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="up" viewBox="0 0 12 44">
+        <path d="M6 36 V9 M1.5 13.5 L6 9 L10.5 13.5" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <ol class="chain">
+    <li class="artifact">
+      <header><span class="kind">Requirement</span><span class="where">docs/orc/registry.md</span></header>
+      <div class="line">- <span class="cite">REQ-01</span>: `memo add &lt;text...&gt;` appends its arguments, joined by spaces, as one line to
+  `.memo.txt` in the current directory, creating the file if missing (spec: memo-cli)</div>
+    </li>
+
+    <li class="link"><svg><use href="#up"/></svg><span>cites</span></li>
+
+    <li class="artifact">
+      <header><span class="kind">Spec</span><span class="where">.scratch/memo-cli/spec.md</span></header>
+      <div class="line">Registry: <span class="cite">REQ-01</span>, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06, REQ-07, REQ-08, REQ-09, REQ-10,
+          D-01, D-02, D-03, D-04, D-05, D-06, D-07</div>
+    </li>
+
+    <li class="link"><svg><use href="#up"/></svg><span>part of the spec, and cites <code>REQ-01</code> itself</span></li>
+
+    <li class="artifact">
+      <header><span class="kind">Ticket</span><span class="where cite">memo-cli/02</span></header>
+      <div class="line">Satisfies: <span class="cite">REQ-01</span>, REQ-02, REQ-03, REQ-05, REQ-06, REQ-07, REQ-08, REQ-09, REQ-10, D-02, D-03</div>
+    </li>
+
+    <li class="link"><svg><use href="#up"/></svg><span>names the ticket in its trailer</span></li>
+
+    <li class="artifact">
+      <header><span class="kind">Commit</span><span class="where"><span class="cite">12e54a6</span> on spec/memo-cli</span></header>
+      <div class="line">feat: add memo add command
+
+Refs: <span class="cite">memo-cli/02</span></div>
+    </li>
+
+    <li class="link"><svg><use href="#up"/></svg><span>keeps the commit as it was</span></li>
+
+    <li class="artifact">
+      <header><span class="kind">Merge commit</span><span class="where">86aef5a on main</span></header>
+      <div class="prose">Lands <code>spec/memo-cli</code> on <code>main</code> with <code>--no-ff</code>, so <code class="cite">12e54a6</code> stays in the history.</div>
+    </li>
+  </ol>
+</body>
+</html>

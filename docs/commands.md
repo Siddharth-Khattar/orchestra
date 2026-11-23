@@ -13,6 +13,21 @@ Eight commands, all typed by you: none of them can be started by the model on it
 | [`/orc [spec]`](#orc) | see where everything stands |
 | [`/orc-next`](#orc-next) | have the next step proposed and run |
 
+What each one leaves behind, side by side. Pushes and new issues wait for the [`push` setting](configuration.md#the-push-setting), and the tracker column applies to GitHub Issues only:
+
+| Command | Commits | Pushes | On the tracker | Confirms with you first |
+|---|---|---|---|---|
+| `/orc-setup` | one, holding the setup files | nothing | creates labels | upstream's drafted files and the labels, then the commit |
+| `/orc-discuss` | default branch: the lock. Spec branch: one record commit when it resolves a pending record kept there | the default branch | edits or deletes the pending-decisions comment | the proposal, before anything reaches the registry |
+| `/orc-spec` | default branch: one | the default branch | creates the spec issue | creating the issue, as `push` says |
+| `/orc-tickets` | default branch: one, with the local tracker only | the default branch, with the local tracker only | creates the ticket issues | the breakdown |
+| `/orc-build` | spec branch: the code, each commit with its trailer, and record commits | nothing | adds `built` labels, writes the pending-decisions comment | the start, unless `buildStart` is `always` |
+| `/orc-land` | spec branch: the default branch merged in and, with the local tracker, the tickets resolved. Default branch: the merge commit, which GitHub makes in the PR modes | the default branch or the spec branch, as the mode says | opens and merges the PR in `pr-agent`, opens it in `pr-human`, closes the issues | the landing, unless `push` is `always` |
+| `/orc` | none | nothing | nothing | nothing to confirm |
+| `/orc-next` | what the confirmed command makes | what that command pushes | what that command writes | the step itself, in its one question |
+
+[Troubleshooting](troubleshooting.md#stops-by-situation) says what to do about each stop listed under a command below.
+
 ## What every command shares
 
 **Banner first, pointer last.** The banner is printed before any tool call. The last line of every run is `Done. Next: <command>   (<why>)`, judged after the run's own writes. When a command cannot go on it prints why and the same kind of pointer, so a stop always names the way out.
@@ -31,7 +46,7 @@ An argument that matches nothing, more than one entry, or only a dropped entry g
 
 **Outward steps follow `push`.** Pushing, opening a PR and creating issues are approved as the [`push` setting](configuration.md#the-push-setting) says. With the default, `ask`, each one waits for a picker.
 
-**Commits.** Orc commits only the paths it names, with fixed messages and no attribution lines. The docs commands (`/orc-discuss`, `/orc-spec`, `/orc-tickets`) commit on the default branch and stop on any other.
+**Commits.** Orc commits only the paths it names, with fixed messages and no attribution lines. The docs commands (`/orc-discuss`, `/orc-spec`, `/orc-tickets`) commit on the default branch and stop on any other. `/orc-discuss` makes one further record commit on the spec branch when it resolves a pending record that lives there.
 
 ## /orc-setup
 
@@ -59,7 +74,11 @@ Once `docs/orc/config.json` exists, `/orc-setup` is the update command.
 
 </details>
 
-It stops when the session was not started at the checkout root, when the config, registry or lock file exists but cannot be read, and, with the GitHub tracker, when `gh` is not usable or `origin` is not a GitHub remote.
+It stops when:
+
+- the session was not started at the checkout root;
+- the config, registry or lock file exists but cannot be read;
+- with the GitHub tracker, `gh` is not usable or `origin` is not a GitHub remote.
 
 ## /orc-discuss
 
@@ -80,9 +99,19 @@ It has two modes, and the registry decides which:
 
 With no argument in spec mode it uses the one entry that is open to discussion (not dropped and not landed, even with tracker items still open), or asks which when there are several, undiscussed ones first. A name the roadmap does not hold yet gets "Add `<name>` at the end of the roadmap (Recommended)" as the first option. Any entry that is not dropped can be revisited by name, a landed one included.
 
-What it asks, in order: whether to include uncommitted registry or glossary changes; each pending decision ("Lock it as a new id" or "Reject it"); the interview rounds; then the proposal with "Lock and commit (Recommended)" or "Change something first". Nothing reaches the registry before that last answer. On a revisit, an answer that contradicts a locked id becomes a new id that supersedes it, and taking an entry out of the plan gives it a `Dropped:` line.
+What it asks, in order:
 
-It stops when HEAD is not on the default branch, and, when the pending record lives on the spec branch, while unrelated files are uncommitted or another worktree holds that branch.
+1. Whether to include uncommitted registry or glossary changes.
+2. Each pending decision: "Lock it as a new id" or "Reject it".
+3. The interview rounds.
+4. The proposal, with "Lock and commit (Recommended)" or "Change something first".
+
+Nothing reaches the registry before that last answer. On a revisit, an answer that contradicts a locked id becomes a new id that supersedes it, and taking an entry out of the plan gives it a `Dropped:` line.
+
+It stops when:
+
+- HEAD is not on the default branch;
+- the pending record lives on the spec branch, and unrelated files are uncommitted or another worktree holds that branch.
 
 ## /orc-spec
 
@@ -98,7 +127,11 @@ It acts on a discussed entry that has no spec yet. The brief it gives upstream c
 
 A rerun resumes instead of writing a second spec: it offers to commit lines an earlier run left uncommitted, or to record a spec it finds published but not recorded. On GitHub that question shows each found issue's title and author and recommends nothing, since anyone can file an issue with a matching title.
 
-It stops when HEAD is not on the default branch, when the registry holds other uncommitted changes, and when the entry is in any state but `discussed`.
+It stops when:
+
+- HEAD is not on the default branch;
+- the registry holds other uncommitted changes;
+- the entry is in any state but `discussed`.
 
 ## /orc-tickets
 
@@ -157,7 +190,13 @@ A rerun builds only what is left, and first merges the default branch into the s
 
 </details>
 
-It stops when the entry has no tickets yet or has landed with nothing new to build, when a ticket target has an unbuilt blocker (the pointer names `/orc-build <blocker>`), when another worktree holds the spec branch, when orc's own paths are uncommitted, and when merging the default branch into the spec branch would conflict.
+It stops when:
+
+- the entry has no tickets yet, or has landed with nothing new to build;
+- a ticket target has an unbuilt blocker (the pointer names `/orc-build <blocker>`);
+- another worktree holds the spec branch;
+- orc's own paths are uncommitted;
+- merging the default branch into the spec branch would conflict.
 
 ## /orc-land
 
@@ -183,7 +222,15 @@ It then merges the default branch into the spec branch, commits the local ticket
 
 A plain `/orc-land` also finishes what an earlier landing left: when a landed entry still has open tracker items or a merged branch lying around and another entry is waiting, it asks "`Finish <first>` (Recommended)" or "`Go on to <second>`". That is what you meet after merging a `pr-human` PR by hand.
 
-It stops in a linked worktree, when another worktree holds the spec or the default branch, when a ticket is not built (they are listed), on a dirty tree, when the spec branch has diverged from `origin`'s, when a merge it has to make first would conflict, on a failed test run or check, and in a PR mode when `origin` is not on GitHub, `push` is `never` or the repo forbids merge commits.
+It stops:
+
+- in a linked worktree, or when another worktree holds the spec or the default branch;
+- when a ticket is not built (they are listed);
+- on a dirty tree;
+- when the spec branch has diverged from `origin`'s;
+- when a merge it has to make first would conflict;
+- on a failed test run or check;
+- in a PR mode, when `origin` is not on GitHub, `push` is `never` or the repo forbids merge commits.
 
 ## /orc
 
@@ -232,3 +279,7 @@ Done. Next: /orc-build memo-cli   (1 of 2 tickets to build on spec/memo-cli; sta
 It asks one question that holds the next step, its reason and that command's banner: "Run it (Recommended)", "Choose another step" or "Cancel". When the next step is to wait (a `pr-human` PR in review), "Cancel" comes first. When the next step is something only you can do, it says so and proposes nothing.
 
 It only ever runs orc's own commands. Typing an upstream command such as `/implement` into the picker's free text is declined, since it would run without orc's brief. A command that asks before it starts, such as `/orc-build`, still asks when it is run this way.
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [Concepts](concepts.md)

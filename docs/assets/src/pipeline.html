@@ -1,0 +1,312 @@
+<!doctype html>
+<!-- ABOUTME: Figure "pipeline": the path of one change through orc's commands, with what each step leaves behind. -->
+<!-- ABOUTME: Shows which steps share a Claude Code session and where /clear starts a fresh one for the build. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="figure-height" content="772">
+<title>orc: the path of one change</title>
+<link rel="stylesheet" href="figure.css">
+<script src="figure.js"></script>
+<style>
+  :root {
+    /* Horizontal grid shared by every row. */
+    --rail-x: 34px;        /* centre of the main rail */
+    --loop-x: 9px;         /* centre of the "next entry" loop */
+    --cmd-x: 74px;         /* left edge of the command column */
+    --cmd-w: 226px;        /* width of the command column */
+    --panel-x: 54px;       /* left edge of the session panel */
+    --gutter-r: 22px;      /* right padding of every row */
+  }
+
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--cmd-x) var(--cmd-w) 1fr;
+    align-items: center;
+    padding-right: var(--gutter-r);
+  }
+
+  /* The rail: one continuous hairline through every row of the flow. */
+  .row.rail::before {
+    content: "";
+    position: absolute;
+    left: calc(var(--rail-x) - 0.75px);
+    width: 1.5px;
+    top: 0;
+    bottom: 0;
+    background: var(--hairline);
+  }
+
+  .row.first::before {
+    top: 50%;
+  }
+
+  .row.last::before {
+    bottom: 50%;
+  }
+
+  .node {
+    position: absolute;
+    left: calc(var(--rail-x) - 5px);
+    top: calc(50% - 5px);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text);
+  }
+
+  .node.optional {
+    background: var(--bg);
+    border: 1.5px solid var(--muted);
+  }
+
+  .step {
+    height: 60px;
+  }
+
+  .step.tall {
+    height: 70px;
+  }
+
+  .cmd {
+    grid-column: 2;
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 22px;
+    white-space: nowrap;
+  }
+
+  .cmd small {
+    display: block;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    color: var(--muted);
+  }
+
+  .out {
+    grid-column: 3;
+    font-size: 16px;
+    line-height: 23px;
+  }
+
+  .out code {
+    font-size: 15px;
+  }
+
+  .section {
+    height: 40px;
+    align-items: end;
+    padding-bottom: 6px;
+  }
+
+  .section .title {
+    grid-column: 2 / 4;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: -0.005em;
+  }
+
+  /* The steps that share one Claude Code session sit on one panel. */
+  .session {
+    position: relative;
+  }
+
+  .session::before {
+    content: "";
+    position: absolute;
+    left: var(--panel-x);
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--surface);
+    border-radius: var(--radius);
+  }
+
+  .session .row {
+    z-index: 0;
+  }
+
+  .session-label {
+    height: 38px;
+    align-items: end;
+  }
+
+  .session-label .title {
+    grid-column: 2 / 4;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--muted);
+  }
+
+  .session-end {
+    height: 10px;
+  }
+
+  /* /clear: a break across the rail, the one place the accent appears. */
+  .clear {
+    height: 52px;
+  }
+
+  .clear .cut {
+    position: absolute;
+    left: calc(var(--rail-x) - 9px);
+    top: calc(50% - 0.75px);
+    width: 18px;
+    height: 1.5px;
+    background: var(--accent);
+  }
+
+  .clear .cmd {
+    color: var(--accent);
+  }
+
+  .clear .out {
+    color: var(--muted);
+  }
+
+  .detour {
+    height: 92px;
+  }
+
+  .detour .out {
+    color: var(--muted);
+  }
+
+  /* The loop back to the next roadmap entry, drawn in a lane left of the rail. */
+  .loop-start::after,
+  .loop-mid::after,
+  .loop-end::after {
+    content: "";
+    position: absolute;
+    left: calc(var(--loop-x) - 0.75px);
+    border-color: var(--hairline);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .loop-start::after {
+    top: 50%;
+    bottom: 0;
+    width: calc(var(--rail-x) - var(--loop-x) - 9px);
+    border-left-width: 1.5px;
+    border-top-width: 1.5px;
+    border-top-left-radius: 10px;
+    margin-top: -0.75px;
+  }
+
+  .loop-mid::after {
+    top: 0;
+    bottom: 0;
+    border-left-width: 1.5px;
+  }
+
+  .loop-end::after {
+    top: 0;
+    bottom: 50%;
+    width: calc(var(--rail-x) - var(--loop-x) - 7px);
+    border-left-width: 1.5px;
+    border-bottom-width: 1.5px;
+    border-bottom-left-radius: 10px;
+    margin-bottom: -0.75px;
+  }
+
+  .loop-arrow {
+    position: absolute;
+    left: calc(var(--rail-x) - 16px);
+    top: calc(50% - 6px);
+    width: 7px;
+    height: 12px;
+    color: var(--hairline);
+  }
+
+  .anytime {
+    margin-top: 12px;
+    padding: 18px 0 0 var(--cmd-x);
+    border-top: 1px solid var(--hairline);
+    font-size: 16px;
+    line-height: 23px;
+  }
+
+  .anytime code {
+    font-size: 15px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <div class="flow">
+    <div class="row section"><div class="title">Once per repo</div></div>
+
+    <div class="row rail first step">
+      <span class="node"></span>
+      <div class="cmd">/orc-setup</div>
+      <div class="out">Upstream skills, orc's config and rules, in one commit</div>
+    </div>
+
+    <div class="row rail step tall">
+      <span class="node"></span>
+      <div class="cmd">/orc-discuss<small>project interview</small></div>
+      <div class="out">The registry: ids such as <code>REQ-01</code> and <code>D-01</code>, and the roadmap</div>
+    </div>
+
+    <div class="row rail section"><div class="title">For each roadmap entry</div></div>
+
+    <div class="session">
+      <div class="row rail session-label"><div class="title">One session</div></div>
+
+      <div class="row rail step tall loop-start">
+        <span class="node"></span>
+        <svg class="loop-arrow" viewBox="0 0 7 12" aria-hidden="true"><path d="M1 1 L6 6 L1 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="cmd">/orc-discuss &lt;name&gt;<small>spec interview</small></div>
+        <div class="out">New ids, and the entry's <code>Seams:</code> and <code>Landing:</code> lines</div>
+      </div>
+
+      <div class="row rail step loop-mid">
+        <span class="node"></span>
+        <div class="cmd">/orc-spec</div>
+        <div class="out">The spec, citing its ids on a <code>Registry:</code> line</div>
+      </div>
+
+      <div class="row rail step loop-mid">
+        <span class="node"></span>
+        <div class="cmd">/orc-tickets</div>
+        <div class="out">Tickets, each citing ids on a <code>Satisfies:</code> line</div>
+      </div>
+
+      <div class="row rail session-end loop-mid"></div>
+    </div>
+
+    <div class="row rail clear loop-mid">
+      <span class="cut"></span>
+      <div class="cmd">/clear</div>
+      <div class="out">The build starts in a fresh session</div>
+    </div>
+
+    <div class="row rail step loop-mid">
+      <span class="node"></span>
+      <div class="cmd">/orc-build</div>
+      <div class="out">Commits on <code>spec/&lt;name&gt;</code>, each with a <code>Refs:</code> trailer</div>
+    </div>
+
+    <div class="row rail detour loop-mid">
+      <span class="node optional"></span>
+      <div class="cmd">/orc-discuss &lt;name&gt;<small>if a decision is pending</small></div>
+      <div class="out">Locks it as a new id, or rejects it: the rework becomes a new ticket through <code>/orc-tickets</code>, then <code>/orc-build</code> again</div>
+    </div>
+
+    <div class="row rail last step loop-end">
+      <span class="node"></span>
+      <div class="cmd">/orc-land</div>
+      <div class="out">A merge commit on the default branch, tickets resolved</div>
+    </div>
+  </div>
+
+  <p class="anytime">At any point, <code>/orc</code> shows where everything stands and <code>/orc-next</code> proposes the next step.</p>
+</body>
+</html>

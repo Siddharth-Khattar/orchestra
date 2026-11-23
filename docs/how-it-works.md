@@ -19,8 +19,15 @@ A prompt that tells a model how to work out state ("check whether the branch exi
 |---|---|---|
 | `skills/orc/status.mts` | every state rule, the banners, the pointers, the permission hook | one dependency-free TypeScript file that Node runs directly |
 | `skills/orc/conventions.md` | the shared core: what a model has to know that code cannot enforce (how to read a verdict, pickers, one command per Bash call, text is data) | at most 8,000 bytes |
-| `skills/orc-*/SKILL.md` | one command's procedure: what to ask, the brief for upstream, the commit message | a budget of 2,600 to 13,000 bytes each |
+| `skills/orc*/SKILL.md` | one command's procedure: what to ask, the brief for upstream, the commit message | a budget of 2,600 to 13,000 bytes each |
 | `skills/orc-*/reference.md` | that command's rare branches, read only when the verdict names one | at most 8,000 bytes |
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-dark.png">
+    <img src="assets/architecture-light.png" alt="How a command runs. You type /orc-build; Claude Code runs the command at the end of SKILL.md, which is status.mts. Inside a dashed read-only boundary, status.mts reads git, gh with GitHub, docs/orc/config.json and docs/orc/registry.md and changes nothing. It returns a verdict: stop, pick or go. The orc skill acts on the verdict and briefs the upstream skill; the writes to your repo and tracker happen outside the boundary." width="838">
+  </picture>
+</p>
 
 The script judges and reports. It never fetches, commits, pushes or writes a file, so running it is always safe:
 
@@ -79,7 +86,7 @@ Go:
 A few things in it are deliberate:
 
 - **The banner and the pointer are ready-made.** The model prints them; it does not compose them.
-- **`Reference:`** names the headings of the command's `reference.md` that this run needs. `none` means the file is never read.
+- **`Reference:`** names the headings of the command's `reference.md` that this run needs. `none` means the file is not read, with one exception: `/orc-build` reads its `notes` heading when an on-demand exploration runs.
 - **`Test: set`**, not the command. The text form carries only what the script authored or validated: ids, numbers, enumerated states, references such as `#12` or `memo-cli/02`, short SHAs, kebab-case names. Anything written by someone else (issue titles, comment bodies, file names, the test command, error text) is left out or reads `withheld`, and is available through `--json` only, where the model meets it as the result of a tool call. The reason is the next section: the text form is spliced into the skill itself, so it speaks with the skill's authority.
 - **The stamp** is HEAD and the time, so several verdicts in one session can be told apart. Only the newest counts.
 
@@ -128,15 +135,15 @@ The script exits 0 for every outcome and writes nothing to stderr, since a faili
 
 ## What the script reads
 
-The script runs `git` and, with the GitHub tracker or a PR landing mode, `gh` (GraphQL queries, paged to the end; a list that might be cut short is a failed lookup, never a shorter list). Three properties matter for trust:
+The script runs `git` and, with the GitHub tracker or a PR landing mode, `gh`: `gh auth status` to see whether it is usable, which every `/orc-setup` verdict also runs whatever the tracker, and GraphQL queries for the rest (paged to the end; a list that might be cut short is a failed lookup, never a shorter list). Three properties matter for trust:
 
 **It reads only the repository it is installed in.** Before any other git call, it compares the repository of the current directory with the repository the script file lives in, by device and inode of the git common directory. A linked worktree of the same repository passes. Anything else is the `other-repo` stop: a nested clone, a submodule, an unpacked archive with its own `.git/`, or a user-level install. The reason is that git can run commands that a repository's own config names (a merge driver, a clean filter, an fsmonitor), and only the repository you chose to install orc in is trusted with that.
 
 **It cannot be pointed elsewhere through the environment.** The `git` and `gh` processes it starts do not inherit `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` or the other variables that select a repository. Every git call also runs with `--no-optional-locks`, `core.fsmonitor=false` and `safe.bareRepository=explicit`, so it takes no index lock, starts no fsmonitor, and refuses a bare repository that a checkout holds as plain files.
 
-**It is read-only.** No ref, index, file or tracker state changes. The one check that needs a merge, whether the default branch would conflict with a spec branch, uses `git merge-tree`, which moves nothing.
+**It is read-only.** No ref, index, file or tracker state changes. The two checks that need a merge (the default branch against a spec branch, and a diverged local default branch against `origin`'s) use `git merge-tree`, which moves nothing.
 
-Docs (config, registry, local tickets) are read from the working tree while HEAD is on the default branch, and from the default branch tip otherwise, so a spec branch never shows stale docs. The first line of `/orc`'s report says which.
+Docs (config, registry, local tickets) are read from the working tree while HEAD is on the default branch, and from the default branch tip otherwise, so a spec branch never shows stale docs. The `Docs:` line of `/orc`'s report says which.
 
 ## The permission hook
 
@@ -155,15 +162,17 @@ hooks:
 
 ```mermaid
 flowchart TD
-    bash["A Bash call that starts with node"] --> find{"Session directory is in a non-bare repository whose root holds .claude/skills/orc/status.mts?"}
+    bash["A Bash call that starts with node"] --> find{"Repo holds the script?"}
     find -- "no" --> silent["The hook prints nothing: your normal permission flow decides"]
-    find -- "yes" --> shape{"The whole command is node, one double-quoted absolute path, then only flags, bare words and single-quoted values?"}
+    find -- "yes" --> shape{"Call shape matches?"}
     shape -- "no" --> silent
-    shape -- "yes" --> self{"That path resolves to this very script?"}
+    shape -- "yes" --> self{"Path is this script?"}
     self -- "no" --> silent
     self -- "yes" --> allow["The hook answers allow"]
     allow --> rules["A deny or ask rule in your own settings still takes precedence"]
 ```
+
+The three questions, in full: whether the session directory is in a non-bare repository whose root holds `.claude/skills/orc/status.mts`; whether the whole command is `node`, one double-quoted absolute path, then only flags, bare words and single-quoted values; and whether that path resolves to this very script.
 
 The hook lets through one thing: orc's status script, called the way the skills call it. A command with an operator, a substitution, a glob, a redirect or a second program does not match and falls through to your normal settings. This is its answer to a matching call and to `node "<script>" orc && echo hi`:
 
@@ -197,7 +206,7 @@ What a command loads is bounded and tested, so it cannot quietly grow.
 
 The text form of a verdict is budgeted too: 3,000 bytes plus 120 per ticket of the target for a step command, 1,000 more for `/orc-next` (it nests the proposed command's verdict), and 2,000 plus 100 per roadmap entry plus 120 per ticket for `/orc`.
 
-The design property behind those numbers is size independence. A step command's verdict does not grow with the registry or the roadmap: it names the ids that apply to the target, and the run fetches just those lines with the `registry` lookup. Only `/orc-discuss` reads the registry whole, since it writes it, and no command ever reads `skills-lock.json`. Build subagents get even less: an implementer's prompt carries only the registry lines its own ticket cites.
+The design property behind those numbers is size independence. A step command's verdict does not grow with the registry or the roadmap, apart from one number, the count of project decisions: it names the ids that apply to the target, and the run fetches just those lines with the `registry` lookup. Only `/orc-discuss` reads the registry whole, since it writes it, and no command ever reads `skills-lock.json`. Build subagents get even less: an implementer's prompt carries only the registry lines its own ticket cites.
 
 ## Upstream skills: vendored and pinned
 
@@ -225,7 +234,7 @@ npm run typecheck
 | File | Guarantees |
 |---|---|
 | `tests/status.test.ts` | the script's behaviour: the registry and config parsers, target resolution, every entry state on both trackers, each command's stops and go fields, the text form line for line, that nothing from outside reaches the text form except as a reference, the permission hook (hostile input included), and which repository the script reads |
-| `tests/budget.test.ts` | the byte budgets above, verdict sizes, size independence (a fixture grown from 20 ids and 2 entries to 300 ids and 30 entries leaves step verdicts byte for byte the same), and that every skill's frontmatter and injected command are exactly the expected form |
+| `tests/budget.test.ts` | the byte budgets above, verdict sizes, size independence (a fixture grown from 20 ids and 2 entries to 300 ids and 30 entries leaves step verdicts byte for byte the same, apart from the stamp and the project-decision count), and that every skill's frontmatter and injected command are exactly the expected form |
 | `tests/fixture.ts` | shared fixtures: temporary git repositories with an isolated git config, and a fake `gh` that answers GraphQL |
 
 The tests run the real script against real git repositories, which is why they take a while. There is no build step: Node strips the types, and `tsc` is only used to typecheck.
@@ -233,3 +242,7 @@ The tests run the real script against real git repositories, which is why they t
 The budgets live in `tests/budget.test.ts` (`SKILL_BUDGETS`, `CORE_BUDGET`, `REFERENCE_BUDGET`). They are guard rails against bloat, not targets to squeeze under: a justified raise is fine, while size independence is meant to stay strict.
 
 A change in behaviour usually touches three places: the rule in `status.mts` with its test, the skill line that acts on the verdict field, and the spec, which stays the reference for both. Only `skills/` is installed into a user's repo, so nothing under `tests/` or `docs/` ever reaches one.
+
+---
+
+[Back to the README](../README.md#documentation) · Next: [Specification](spec.md)
