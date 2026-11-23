@@ -23,10 +23,8 @@ A prompt that tells a model how to work out state ("check whether the branch exi
 | `skills/orc-*/reference.md` | that command's rare branches, read only when the verdict names one | at most 8,000 bytes |
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-dark.png">
-    <img src="assets/architecture-light.png" alt="How a command runs. You type /orc-build; Claude Code runs the command at the end of SKILL.md, which is status.mts. Inside a dashed read-only boundary, status.mts reads git, gh with GitHub, docs/orc/config.json and docs/orc/registry.md and changes nothing. It returns a verdict: stop, pick or go. The orc skill acts on the verdict and briefs the upstream skill; the writes to your repo and tracker happen outside the boundary." width="838">
-  </picture>
+  <img src="assets/architecture-light.png#gh-light-mode-only" alt="How a command runs. You type /orc-build; Claude Code runs the command at the end of SKILL.md, which is status.mts. Inside a dashed read-only boundary, status.mts reads git, gh with GitHub, docs/orc/config.json and docs/orc/registry.md and changes nothing. It returns a verdict: stop, pick or go. The orc skill acts on the verdict and briefs the upstream skill; the writes to your repo and tracker happen outside the boundary." width="838">
+  <img src="assets/architecture-dark.png#gh-dark-mode-only" alt="How a command runs. You type /orc-build; Claude Code runs the command at the end of SKILL.md, which is status.mts. Inside a dashed read-only boundary, status.mts reads git, gh with GitHub, docs/orc/config.json and docs/orc/registry.md and changes nothing. It returns a verdict: stop, pick or go. The orc skill acts on the verdict and briefs the upstream skill; the writes to your repo and tracker happen outside the boundary." width="838">
 </p>
 
 The script judges and reports. It never fetches, commits, pushes or writes a file, so running it is always safe:

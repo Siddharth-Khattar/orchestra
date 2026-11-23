@@ -113,10 +113,8 @@ Since a landed ticket counts as built, adding a ticket to a landed entry simply 
 Every commit that implements a ticket ends with a trailer naming it: `Refs: #40` on GitHub, `Refs: memo-cli/02` with local markdown. A review fix that spans tickets carries one line per ticket. They all sit in the message's last paragraph, since that is the only place git reads trailers from.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/traceability-dark.png">
-    <img src="assets/traceability-light.png" alt="How REQ-01 is traced. The registry line defines REQ-01; the spec's Registry: line cites it; ticket memo-cli/02 is part of the spec and cites REQ-01 on its Satisfies: line; commit 12e54a6 names memo-cli/02 in a Refs: trailer; merge commit 86aef5a on main keeps 12e54a6 in the history." width="838">
-  </picture>
+  <img src="assets/traceability-light.png#gh-light-mode-only" alt="How REQ-01 is traced. The registry line defines REQ-01; the spec's Registry: line cites it; ticket memo-cli/02 is part of the spec and cites REQ-01 on its Satisfies: line; commit 12e54a6 names memo-cli/02 in a Refs: trailer; merge commit 86aef5a on main keeps 12e54a6 in the history." width="838">
+  <img src="assets/traceability-dark.png#gh-dark-mode-only" alt="How REQ-01 is traced. The registry line defines REQ-01; the spec's Registry: line cites it; ticket memo-cli/02 is part of the spec and cites REQ-01 on its Satisfies: line; commit 12e54a6 names memo-cli/02 in a Refs: trailer; merge commit 86aef5a on main keeps 12e54a6 in the history." width="838">
 </p>
 
 So the question "which commits deliver `REQ-03`?" is a join: the tickets whose `Satisfies:` line holds the id, then the commits whose trailer names those tickets. This is also why orc lands with merge commits only. A squash or a rebase would replace the per-ticket commits, the join would break, and `/orc` reports such an entry as `squashed` instead of passing it off as landed.
@@ -166,8 +164,8 @@ With the local tracker it is `.scratch/<name>/pending-decisions.md`, committed o
 
 ```mermaid
 flowchart LR
-    conflict["The build meets a conflict"] --> line["One line in the pending record"]
-    line --> ask{"/orc-discuss: lock or reject?"}
+    conflict["The build meets a conflict"] --> recorded["One line in the pending record"]
+    recorded --> ask{"/orc-discuss: lock or reject?"}
     ask -- "lock" --> id["A new id, superseding the one it went against"]
     ask -- "reject" --> ticket["What was written stays, and the rework becomes a new ticket"]
     id --> gone["The line leaves the record"]

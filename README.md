@@ -1,8 +1,6 @@
 <h1 align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo-light.svg" alt="orc" height="72">
-  </picture>
+  <img src="docs/assets/logo-light.svg#gh-light-mode-only" alt="orc" height="72">
+  <img src="docs/assets/logo-dark.svg#gh-dark-mode-only" alt="orc" height="72">
 </h1>
 
 <p align="center">
@@ -25,10 +23,8 @@
 </p>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.png">
-    <img src="docs/assets/pipeline-light.png" alt="The path of one change through orc: /orc-setup once, then for each roadmap entry /orc-discuss, /orc-spec and /orc-tickets in one session, then /orc-build in a fresh session after /clear, /orc-discuss if a decision is pending, and /orc-land." width="838">
-  </picture>
+  <img src="docs/assets/pipeline-light.png#gh-light-mode-only" alt="The path of one change through orc: /orc-setup once, then for each roadmap entry /orc-discuss, /orc-spec and /orc-tickets in one session, then /orc-build in a fresh session after /clear, /orc-discuss if a decision is pending, and /orc-land." width="838">
+  <img src="docs/assets/pipeline-dark.png#gh-dark-mode-only" alt="The path of one change through orc: /orc-setup once, then for each roadmap entry /orc-discuss, /orc-spec and /orc-tickets in one session, then /orc-build in a fresh session after /clear, /orc-discuss if a decision is pending, and /orc-land." width="838">
 </p>
 
 ## What it is
@@ -90,10 +86,8 @@ The interview, the spec and the tickets are meant to share one session, while th
 Every command opens with a banner before it touches anything and ends with a pointer to the next step. This is `/orc-build` in a repo with two tickets waiting:
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/session-dark.png">
-    <img src="docs/assets/session-light.png" alt="A run of /orc-build. The banner lists what the command runs, its target, what it reads, what it writes and what it sends outward. The run ends with the pointer: Done. Next: /orc-discuss memo-cli (every ticket is built; 1 decision to lock first)." width="838">
-  </picture>
+  <img src="docs/assets/session-light.png#gh-light-mode-only" alt="A run of /orc-build. The banner lists what the command runs, its target, what it reads, what it writes and what it sends outward. The run ends with the pointer: Done. Next: /orc-discuss memo-cli (every ticket is built; 1 decision to lock first)." width="838">
+  <img src="docs/assets/session-dark.png#gh-dark-mode-only" alt="A run of /orc-build. The banner lists what the command runs, its target, what it reads, what it writes and what it sends outward. The run ends with the pointer: Done. Next: /orc-discuss memo-cli (every ticket is built; 1 decision to lock first)." width="838">
 </p>
 
 The banner and the pointer are produced by the status script, not composed by the model, so they read the same on every run. The [command reference](docs/commands.md) has the banner of each command as text.
