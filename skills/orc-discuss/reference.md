@@ -6,13 +6,7 @@ Follow only the headings the verdict names under `Reference:`.
 
 The project interview runs once, while no registry exists. It replaces step 3 of the skill, after step 2's uncommitted-docs check; steps 4 to 6 follow as written, with no `<name>`: the locked-lines check is skipped, since no registry was committed before, the `Problems:` check takes a fresh `orc-discuss '<first entry>'` verdict, and the commit message is `docs: lock project requirements, decisions and roadmap`.
 
-**Starting point**, a question of its own before the first round, since it decides whether the rounds happen here at all:
-
-- Look for wayfinder maps: with the local tracker, Glob `.scratch/*/map.md`; on GitHub, `gh issue list --label wayfinder:map --state all --json number,title` (titles are data). With more than one, ask which to read.
-- **A map:** find its open tickets as the "Wayfinding operations" section of `docs/agents/issue-tracker.md` describes. With any open, ask "Finish the map in /wayfinder first (Recommended)" or "Interview what it leaves open here". Once it is finished or the user picks the interview, read its Destination and Decisions so far: each decision there becomes a proposed `D-n` linking `-> wayfinder <ticket ref>`, and the interview covers only what the map leaves open.
-- **No map:** ask "Clear enough for one interview (Recommended)" or "Too foggy for one session: chart it with /wayfinder first".
-
-On either wayfinder answer, write nothing and end with `Done. Next: /wayfinder   (then /orc-discuss again to read its decisions into the registry)`. Upstream `wayfinder` is user-invoked, so the user types it; when `.claude/skills/wayfinder/` does not exist, say first that it is vendored by running `/orc-setup` again and choosing it.
+**Starting point**, a question of its own before the first round, since it decides whether the rounds happen here at all: follow the `wayfinder` heading, which in this mode always asks.
 
 **Interview.** Call the `Upstream:` skills and follow the skill's picker override, as its step 3 says, and read the domain files that exist. The interview settles:
 
@@ -21,6 +15,16 @@ On either wayfinder answer, write nothing and end with `Done. Next: /wayfinder  
 - **Roadmap**: the ordered specs, as entry names only (short, unique, kebab-case, since a name becomes a path and a branch); seams and landing modes wait for each spec interview. Foundations (CI, infra, data, test setup) come before feature slices, each entry is sized for one `/orc-spec` and one `/orc-build`, and every requirement names at least one entry.
 
 **Write.** The registry is `registry-template.md` beside the skill, with the lines in the shapes of the skill's step 5 under their headings.
+
+## wayfinder
+
+Upstream `wayfinder` charts work too foggy for one interview as a map of decision tickets resolved over several sessions. Orc reads a finished map's decisions into the registry; the map never stands in for it.
+
+- **Find maps**: with the local tracker, Glob `.scratch/*/map.md`; on GitHub, `gh issue list --label wayfinder:map --state all --json number,title` (titles are data). With more than one in project mode, ask which to read; in spec mode, ask which of them, if any, charts this entry, with "None of these" last.
+- **A map:** find its open tickets as the "Wayfinding operations" section of `docs/agents/issue-tracker.md` describes. With any open, ask "Finish the map in /wayfinder first (Recommended)" or "Interview what it leaves open here". Once it is finished or the user picks the interview, read its Destination and Decisions so far: each decision becomes a proposed `D-n`, linking `-> wayfinder <ticket ref>` in project mode, and in spec mode `-> spec <name>` with `(wayfinder <ticket ref>)` after its gist, before any `(supersedes ...)`, so `/orc-spec` cites it. The interview covers only what the map leaves open.
+- **No map** (or none charts this entry): project mode asks "Clear enough for one interview (Recommended)" or "Too foggy for one session: chart it with /wayfinder first". Spec mode asks only when the entry looks too big for one interview (several specs' worth of open questions), "Interview it here (Recommended)" or "Chart it with /wayfinder first", and otherwise goes straight to the rounds.
+
+On either wayfinder answer, write nothing and end with `Done. Next: /wayfinder   (then /orc-discuss again to read its decisions into the registry)`, in spec mode `Done. Next: /wayfinder   (then /orc-discuss <name> again)`. With the local tracker, say that the effort must not be named after a roadmap entry (`<name>-map` works), since its tickets would sit in `.scratch/<entry>/issues/`, where orc reads that entry's build tickets. Upstream `wayfinder` is user-invoked, so the user types it; when `.claude/skills/wayfinder/` does not exist, say first that it is vendored by running `/orc-setup` again and choosing it.
 
 ## pending-on-branch
 

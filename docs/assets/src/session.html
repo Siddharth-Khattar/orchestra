@@ -4,7 +4,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="figure-height" content="420">
+<meta name="figure-height" content="444">
 <title>orc: what a command looks like</title>
 <link rel="stylesheet" href="figure.css">
 <script src="figure.js"></script>
@@ -92,7 +92,7 @@
     position: absolute;
     right: 36px;
     top: 56px;
-    height: 162px;
+    height: 186px;
     border-left: var(--line) solid var(--hairline);
   }
 
@@ -139,7 +139,8 @@ at their locked commits</dd>
       <dd>code and tests on spec/&lt;name&gt;, every commit with its ticket's Refs: trailer</dd>
       <dt>Outward:</dt>
       <dd>none (no push, no PR; /orc-land lands the branch);
-GitHub, whatever push says: built labels and the pending-decisions comment</dd>
+GitHub, whatever push says: built labels (ready-for-agent removed)
+and the pending-decisions comment</dd>
     </dl>
     <div class="elision" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="pointer">Done. Next: <span class="next">/orc-discuss memo-cli</span>   (every ticket is built; 1 decision to lock first)</div>

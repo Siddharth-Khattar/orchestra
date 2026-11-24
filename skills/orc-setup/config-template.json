@@ -1,10 +1,10 @@
 {
   "tracker": "github",
   "profile": "mvp",
-  "research": "on-demand",
+  "research": "always",
   "build": "implement-spec",
-  "reviewFixRounds": 1,
-  "landing": "pr-agent",
+  "reviewFixRounds": 2,
+  "landing": "local-merge",
   "push": "ask",
   "buildStart": "ask",
   "test": null,

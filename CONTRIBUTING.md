@@ -7,8 +7,9 @@ Thanks for taking the time to look. Orc is small, and most changes touch only a 
 | Path | What it holds |
 |---|---|
 | `skills/` | The eight skills. This is the only folder that gets installed into a user's repo |
-| `skills/orc/status.mts` | The status script. Every rule about state lives here, along with the banners, the pointers and the permission hook |
-| `skills/orc/conventions.md` | The shared core that every command loads |
+| `skills/orc/status.mts` | The status script. Every rule about state lives here, along with the banners and the pointers |
+| `skills/orc/hook.mts` | The permission hook, which allows only calls to `status.mts` beside it |
+| `skills/orc/conventions.md` | The shared core that every command but `/orc` loads |
 | `skills/orc-*/SKILL.md`, `reference.md` | One command's procedure, and its rarer branches |
 | `tests/` | `status.test.ts` for the script's behaviour, `budget.test.ts` for the byte budgets, `fixture.ts` for the shared fixtures |
 | `docs/` | The user docs, and `docs/spec.md` as the exhaustive reference |

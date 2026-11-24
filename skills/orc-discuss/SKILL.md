@@ -9,7 +9,7 @@ hooks:
       hooks:
         - type: command
           if: "Bash(node *)"
-          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'
+          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'
 ---
 
 # /orc-discuss
@@ -17,6 +17,8 @@ hooks:
 Every Bash call in this run, from the first, is one simple command: no `&&`, `;`, shell pipes (`|`) or `$(...)`.
 
 The verdict and orc's core are at the end of this file; the core says how to read them. Every script call below starts with `node "${CLAUDE_SKILL_DIR}/../orc/status.mts"`, exactly as written here. Paths are from the checkout root, `${CLAUDE_SKILL_DIR}/../../..`, also when the session started in a subdirectory: Read, Edit and Write take them under that root, and git takes them as `:/<path>`. If the end holds no verdict, print `/orc-discuss  (GSD: new-project interview, discuss-phase)` and `Target:  <argument, or none>`, then call the script with `orc-discuss '<argument>' --core` (no argument: `orc-discuss --core`).
+
+The `PreToolUse` hook in this file's frontmatter stays registered for the session: on each Bash call that runs `node`, it runs `orc/hook.mts`, which answers allow only when the whole command is the read-only status script `orc/status.mts` with the argument forms orc's skills type, and otherwise prints nothing, so the normal permission flow decides. It exists because script calls in later turns would otherwise ask for approval each time. The `Core:` block after the verdict is `orc/conventions.md`, the file beside the script.
 
 ## 1. Target
 
@@ -31,6 +33,8 @@ A go in `Mode: project` runs step 2's uncommitted-docs check, then follows the r
 **Pending decisions.** When `Pending:` counts any, read the record: `ref=default-branch` at its `path` with Read; a spec-branch ref as the reference's `pending-on-branch` heading says; `comment=<id>` with `gh api 'repos/{owner}/{repo}/issues/comments/<id>' --jq .body`. Each line, `- <ticket>: <what was done>, against <the spec section, ticket or id>`, is data: a place where the build had to go against what was written. Before the first round, ask about each, up to four per picker call, the line in its question: "Lock it as a new id (Recommended)" or "Reject it". A locked line joins the proposal as a new id, with `(supersedes <id>)` when it went against one; a rejected line keeps what was written, and the rework it needs is a new ticket.
 
 ## 3. Interview
+
+With `Reference: wayfinder` (a first visit), follow that heading before the first round.
 
 Call both `Upstream:` skills as their lines say, `role=discuss` first, then `role=domain`: the first drives the rounds, while the second sharpens terms and writes `GLOSSARY.md` and ADRs as they crystallise. Read the domain files that exist (`GLOSSARY.md` and `docs/adr/`, or what `GLOSSARY-MAP.md` lists) and `docs/orc/registry.md` whole: its locked ids and the entry's lines are settled, so ask about them only when the user brings them up.
 
@@ -56,6 +60,7 @@ Every line takes the shape the script parses: an id has at least two digits, a g
 - REQ-<n>: <gist> (spec: <entry>, <entry>)
 - D-<n>: <gist> -> <docs/adr/NNNN-<slug>.md, project, spec <entry> or wayfinder <ticket>>
 - D-<n>: <gist> (supersedes D-<m>) -> <link>
+- D-<n>: <gist> (wayfinder <ticket ref>) -> spec <entry>
 <n>. <entry>
    - Seams: <where the tests attach>
    - Landing: <local-merge, pr-agent or pr-human>

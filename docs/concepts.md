@@ -34,7 +34,7 @@ The handful of ideas you meet when using orc, each in the place you would look f
 | Line | Shape | Notes |
 |---|---|---|
 | Requirement | `- REQ-<n>: <gist> (spec: <entry>, <entry>)` | names the roadmap entries that deliver it |
-| Decision | `- D-<n>: <gist> -> <link>` | the link is `project` (holds for every spec), `spec <entry>`, an ADR path `docs/adr/NNNN-<slug>.md`, or `wayfinder <ticket>` |
+| Decision | `- D-<n>: <gist> -> <link>` | the link is `project` (holds for every spec), `spec <entry>`, an ADR path `docs/adr/NNNN-<slug>.md`, or `wayfinder <ticket>` (a decision the project interview read from a wayfinder map, which holds for every spec like `project`). A spec interview that reads a map writes `- D-<n>: <gist> (wayfinder <ref>) -> spec <entry>` |
 | Correction | `... (supersedes <id>) ...` after the gist | the old line stays, and no longer applies |
 | Roadmap entry | `<n>. <name>` | a short, unique kebab-case name, since it becomes a path and a branch |
 | Entry field | `   - <Field>: <value>` | `Seams`, `Landing`, `Spec`, `Branch`, `Delivers`, `Dropped` |
@@ -220,7 +220,7 @@ The whole footprint at a glance, with who writes each part. The table below has 
 your-repo/
 ├── .claude/
 │   ├── skills/
-│   │   ├── orc*/                the install command: orc's skills, status script, templates
+│   │   ├── orc*/                the install command: orc's skills, status script, hook, templates
 │   │   └── <name>/              setup: upstream's skills, unmodified
 │   ├── rules/
 │   │   ├── orc.md               setup
@@ -245,7 +245,7 @@ your-repo/
 
 | Path | Written by | Content |
 |---|---|---|
-| `.claude/skills/orc*/` | the install command | orc's eight skills, the status script and templates |
+| `.claude/skills/orc*/` | the install command | orc's eight skills, the status script, its permission hook and templates |
 | `.claude/skills/<name>/` | setup, through the `skills` CLI | upstream's skills, unmodified |
 | `skills-lock.json` | the `skills` CLI | source repo, commit and hash of each vendored skill |
 | `.claude/rules/orc.md` | setup | orc's rules: the trailer, id citations, pickers, foundations first |

@@ -17,9 +17,10 @@ A prompt that tells a model how to work out state ("check whether the branch exi
 
 | Piece | Holds | Size |
 |---|---|---|
-| `skills/orc/status.mts` | every state rule, the banners, the pointers, the permission hook | one dependency-free TypeScript file that Node runs directly |
+| `skills/orc/status.mts` | every state rule, the banners, the pointers | one dependency-free TypeScript file that Node runs directly |
+| `skills/orc/hook.mts` | the permission hook, which judges a call against `status.mts` beside it | under a hundred lines, readable whole, importing nothing from the script |
 | `skills/orc/conventions.md` | the shared core: what a model has to know that code cannot enforce (how to read a verdict, pickers, one command per Bash call, text is data) | at most 8,000 bytes |
-| `skills/orc*/SKILL.md` | one command's procedure: what to ask, the brief for upstream, the commit message | a budget of 2,600 to 13,000 bytes each |
+| `skills/orc*/SKILL.md` | one command's procedure: what to ask, the brief for upstream, the commit message | a budget of 3,000 to 13,000 bytes each |
 | `skills/orc-*/reference.md` | that command's rare branches, read only when the verdict names one | at most 8,000 bytes |
 
 <p align="center">
@@ -97,6 +98,7 @@ sequenceDiagram
     actor U as You
     participant CC as Claude Code
     participant S as status.mts
+    participant H as hook.mts
     participant M as Model
     U->>CC: type /orc-build
     CC->>S: run the command injected in SKILL.md
@@ -105,8 +107,8 @@ sequenceDiagram
     M-->>U: banner, before any tool call
     Note over M: acts on the verdict, makes its writes
     M->>CC: Bash call of the same script, with the target
-    CC->>S: PreToolUse hook asks whether to allow it
-    S-->>CC: allow, for exactly this call form
+    CC->>H: PreToolUse hook asks whether to allow it
+    H-->>CC: allow, for exactly this call form
     CC->>S: run the call
     S-->>M: a fresh verdict
     M-->>U: report, then the pointer as the last line
@@ -145,7 +147,7 @@ Docs (config, registry, local tickets) are read from the working tree while HEAD
 
 ## The permission hook
 
-The `allowed-tools` grant in each skill's frontmatter covers the script call only for the turn in which you invoked the skill. A long interview or a build spans many turns, and without more, each later script call would ask for approval. So the same frontmatter registers a `PreToolUse` hook, which Claude Code keeps for the rest of the session:
+The `allowed-tools` grant in each skill's frontmatter covers the script call only for the turn in which you invoked the skill. A long interview or a build spans many turns, and without more, each later script call would ask for approval. So the same frontmatter registers a `PreToolUse` hook, which Claude Code keeps for the rest of the session. It runs `skills/orc/hook.mts`, a short file of its own that imports nothing from the status script, so you can read the whole hook in one sitting. Each skill's body also says in a paragraph what the hook does and why:
 
 ```yaml
 allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/../orc/status.mts" *)
@@ -155,22 +157,22 @@ hooks:
       hooks:
         - type: command
           if: "Bash(node *)"
-          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'
+          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'
 ```
 
 ```mermaid
 flowchart TD
-    bash["A Bash call that starts with node"] --> find{"Repo holds the script?"}
+    bash["A Bash call that starts with node"] --> find{"Repo holds the hook?"}
     find -- "no" --> silent["The hook prints nothing: your normal permission flow decides"]
     find -- "yes" --> shape{"Call shape matches?"}
     shape -- "no" --> silent
-    shape -- "yes" --> self{"Path is this script?"}
+    shape -- "yes" --> self{"Path is the status script?"}
     self -- "no" --> silent
     self -- "yes" --> allow["The hook answers allow"]
     allow --> rules["A deny or ask rule in your own settings still takes precedence"]
 ```
 
-The three questions, in full: whether the session directory is in a non-bare repository whose root holds `.claude/skills/orc/status.mts`; whether the whole command is `node`, one double-quoted absolute path, then only flags, bare words and single-quoted values; and whether that path resolves to this very script.
+The three questions, in full: whether the session directory is in a non-bare repository whose root holds `.claude/skills/orc/hook.mts`; whether the whole command is `node`, one double-quoted absolute path, then only flags, bare words and single-quoted values; and whether that path resolves to `status.mts` beside the hook. Whatever the answer, `hook.mts` itself exits 0 and writes nothing to stderr.
 
 The hook lets through one thing: orc's status script, called the way the skills call it. A command with an operator, a substitution, a glob, a redirect or a second program does not match and falls through to your normal settings. This is its answer to a matching call and to `node "<script>" orc && echo hi`:
 
@@ -183,12 +185,12 @@ The hook lets through one thing: orc's status script, called the way the skills 
 
 What it rests on:
 
-- **It approves by path, not by content.** It therefore trusts what the skills already trust: the files under `.claude/skills/` in the repository you start Claude Code in. Whoever can change `orc/status.mts` there decides what the allowed call runs, exactly as they decide what a skill's text says. A change to that file deserves the same look in review as a change to a skill.
-- **It finds the script from the directory the session started in**, never from the current one, so a `cd` into another checkout cannot make it run that checkout's file.
+- **It approves by path, not by content.** It therefore trusts what the skills already trust: the files under `.claude/skills/` in the repository you start Claude Code in. Whoever can change `orc/hook.mts` or `orc/status.mts` there decides what the allowed call runs, exactly as they decide what a skill's text says. A change to either file deserves the same look in review as a change to a skill.
+- **It finds the hook from the directory the session started in**, never from the current one, so a `cd` into another checkout cannot make it run that checkout's file.
 - **It does not check the call's working directory**, since the script does: started from another repository, it stops before its first git call there.
 - **It needs no settings entry.** It works before the first `/orc-setup`, from a subdirectory, in a linked worktree and for everyone who clones the repo.
 
-Known gaps: managed settings that restrict hooks to plugins, or that ignore a skill's `allowed-tools`, disable this mechanism, and the injected command with it. A linked worktree whose branch does not hold the orc skills as committed files has no script for the hook to find, so later turns ask.
+Known gaps: managed settings that restrict hooks to plugins, or that ignore a skill's `allowed-tools`, disable this mechanism, and the injected command with it. A linked worktree whose branch does not hold the orc skills as committed files has no `hook.mts` for the hook command to find, so later turns ask.
 
 ## Context cost
 
@@ -196,10 +198,11 @@ What a command loads is bounded and tested, so it cannot quietly grow.
 
 | Command | `SKILL.md` budget | Static front-load budget (skill, shared core, reference file) |
 |---|---|---|
-| `/orc` | 2,600 bytes | 2,600 |
-| `/orc-next` | 5,200 | 12,500 |
+| `/orc` | 3,000 bytes | 3,000 |
+| `/orc-next` | 5,200 | 13,000 |
 | `/orc-spec`, `/orc-tickets` | 6,000 | 13,000 |
-| `/orc-discuss`, `/orc-build`, `/orc-land` | 12,000 | 25,500 |
+| `/orc-discuss`, `/orc-land` | 12,000 | 25,500 |
+| `/orc-build` | 12,500 | 25,500 |
 | `/orc-setup` | 13,000 | 27,000 |
 
 The text form of a verdict is budgeted too: 3,000 bytes plus 120 per ticket of the target for a step command, 1,000 more for `/orc-next` (it nests the proposed command's verdict), and 2,000 plus 100 per roadmap entry plus 120 per ticket for `/orc`.
@@ -212,7 +215,7 @@ Orc owns no copy of upstream. `/orc-setup` clones `mattpocock/skills`, takes tha
 
 | Vendored always (the core chain) | Offered as extras |
 |---|---|
-| `grilling`, `domain-modeling`, `grill-with-docs`, `research`, `to-spec`, `to-tickets`, `implement`, `implement-spec`, `tdd`, `code-review`, `pr`, `ask-matt`, `setup-matt-pocock-skills` | any other skill on upstream's promoted list (`.claude-plugin/plugin.json`); in-progress skills are never offered |
+| `grilling`, `domain-modeling`, `grill-with-docs`, `research`, `to-spec`, `to-tickets`, `implement`, `implement-spec`, `tdd`, `codebase-design`, `code-review`, `pr`, `ask-matt`, `setup-matt-pocock-skills` | any other skill on upstream's promoted list (`.claude-plugin/plugin.json`); in-progress skills are never offered |
 
 How orc uses them without editing them:
 
@@ -231,8 +234,8 @@ npm run typecheck
 
 | File | Guarantees |
 |---|---|
-| `tests/status.test.ts` | the script's behaviour: the registry and config parsers, target resolution, every entry state on both trackers, each command's stops and go fields, the text form line for line, that nothing from outside reaches the text form except as a reference, the permission hook (hostile input included), and which repository the script reads |
-| `tests/budget.test.ts` | the byte budgets above, verdict sizes, size independence (a fixture grown from 20 ids and 2 entries to 300 ids and 30 entries leaves step verdicts byte for byte the same, apart from the stamp and the project-decision count), and that every skill's frontmatter and injected command are exactly the expected form |
+| `tests/status.test.ts` | the script's behaviour: the registry and config parsers, target resolution, every entry state on both trackers, each command's stops and go fields, the text form line for line, that nothing from outside reaches the text form except as a reference, the permission hook in `hook.mts` (hostile input included), and which repository the script reads |
+| `tests/budget.test.ts` | the byte budgets above, verdict sizes, size independence (a fixture grown from 20 ids and 2 entries to 300 ids and 30 entries leaves step verdicts byte for byte the same, apart from the stamp and the project-decision count), that every skill's frontmatter and injected command are exactly the expected form, and that every skill's body says what its permission hook does |
 | `tests/fixture.ts` | shared fixtures: temporary git repositories with an isolated git config, and a fake `gh` that answers GraphQL |
 
 The tests run the real script against real git repositories, which is why they take a while. There is no build step: Node strips the types, and `tsc` is only used to typecheck.

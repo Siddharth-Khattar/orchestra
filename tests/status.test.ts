@@ -1,4 +1,4 @@
-// ABOUTME: Tests for skills/orc/status.mts: the parsers as pure functions, and every verdict against temporary git repos.
+// ABOUTME: Tests for skills/orc/status.mts and its permission hook hook.mts: the parsers as pure functions, and every verdict against temporary git repos.
 // ABOUTME: git runs for real with an isolated config; gh is a fake that answers GraphQL, so no test needs the network.
 
 import assert from "node:assert/strict";
@@ -13,7 +13,6 @@ import {
   citedIds,
   countPending,
   detailQuery,
-  hookDecision,
   isUserInvoked,
   lightQuery,
   lockedChanges,
@@ -35,6 +34,7 @@ import {
   parseWorktrees,
   pointer,
   projectDecisions,
+  readyForAgentLabel,
   renderLookup,
   requirementsOf,
   resolveTarget,
@@ -48,6 +48,7 @@ import {
   type Runner,
   type Verdict,
 } from "../skills/orc/status.mts";
+import { hookDecision } from "../skills/orc/hook.mts";
 
 import {
   builtCli,
@@ -110,6 +111,7 @@ describe("parseRegistry", () => {
     "- D-03: Sort by code unit -> spec show",
     "- D-04: From the map (supersedes D-03) -> wayfinder #7",
     "- D-05: Show only -> spec show",
+    "- D-06: Read from the map (wayfinder #8) (supersedes D-05) -> spec show",
     "",
     "## Roadmap",
     "1. add",
@@ -139,6 +141,7 @@ describe("parseRegistry", () => {
         ["D-03", 15, null, "spec show"],
         ["D-04", 16, "D-03", "wayfinder #7"],
         ["D-05", 17, null, "spec show"],
+        ["D-06", 18, "D-05", "spec show"],
       ],
     );
     assert.equal(registry.ids[0]?.text, "- REQ-01: Add a counter (spec: add)");
@@ -158,13 +161,15 @@ describe("parseRegistry", () => {
   });
 
   test("superseded ids, live requirements, the ids /orc-spec lists and the project decisions it counts", () => {
-    assert.deepEqual([...supersededBy(registry)], [["REQ-01", "REQ-03"], ["D-03", "D-04"]]);
+    assert.deepEqual([...supersededBy(registry)], [["REQ-01", "REQ-03"], ["D-03", "D-04"], ["D-05", "D-06"]]);
     const [add, , show] = registry.entries;
     assert.ok(add && show);
     assert.deepEqual(requirementsOf(registry, add), ["REQ-02", "REQ-03"]);
     assert.deepEqual(requirementsOf(registry, show), ["REQ-02", "REQ-03"]);
-    assert.deepEqual(specIds(registry, show), ["REQ-02", "REQ-03", "D-05"]);
-    assert.deepEqual(projectDecisions(registry), ["D-01"]);
+    // A map's decision for one entry keeps its provenance in the gist and links to the entry, so the spec cites it.
+    assert.deepEqual(specIds(registry, show), ["REQ-02", "REQ-03", "D-06"]);
+    // A map's decision is the project interview's, so it holds for every spec like `-> project`.
+    assert.deepEqual(projectDecisions(registry), ["D-01", "D-04"]);
   });
 
   test("reports each malformed line by number and kind instead of failing", () => {
@@ -241,7 +246,7 @@ describe("parseRegistry", () => {
       "D-77: not in the registry",
     ]);
     assert.deepEqual(result.keys[3], { key: "D-77", lines: null, supersededBy: null });
-    assert.deepEqual(renderLookup(lookupKeys(registry, [], true)), ["- D-01: Plain ESM -> project"]);
+    assert.deepEqual(renderLookup(lookupKeys(registry, [], true)), ["- D-01: Plain ESM -> project", "- D-04: From the map (supersedes D-03) -> wayfinder #7"]);
   });
 });
 
@@ -275,6 +280,18 @@ describe("parseConfig", () => {
 });
 
 describe("small parsers", () => {
+  test("readyForAgentLabel reads the tracker column of the ready-for-agent row", () => {
+    const mapping = [
+      "| Label in mattpocock/skills | Label in our tracker | Meaning |",
+      "| -------------------------- | -------------------- | ------- |",
+      "| `needs-triage`             | `triage`             | x       |",
+      "| `ready-for-agent`          | `agent:ready`        | y       |",
+    ].join("\r\n");
+    assert.equal(readyForAgentLabel(mapping), "agent:ready");
+    assert.equal(readyForAgentLabel("| `ready-for-agent` | ready-for-agent | y |"), null);
+    assert.equal(readyForAgentLabel("# Triage Labels\n"), null);
+  });
+
   test("parseBlockedBy reads none, numbers, titles with digits and qualified refs", () => {
     assert.deepEqual(parseBlockedBy(null, "cli"), []);
     assert.deepEqual(parseBlockedBy("None (can start immediately)", "cli"), []);
@@ -357,8 +374,8 @@ describe("small parsers", () => {
     assert.equal(parseArgs(["registry"]).usage, "registry needs a key or --project");
     assert.deepEqual([parseArgs(["registry", "--project"]).project, parseArgs(["registry", "--project"]).usage], [true, null]);
     assert.equal(parseArgs(["orc", "--project"]).usage, "--project goes with registry, not with a command");
-    assert.deepEqual([parseArgs(["hook"]).kind, parseArgs(["hook"]).usage], ["hook", null]);
-    assert.equal(parseArgs(["hook", "x"]).usage, "hook takes nothing but the tool call on stdin");
+    // The permission hook is its own file, hook.mts, so `hook` is no command of the status script.
+    assert.equal(parseArgs(["hook"]).usage, "unknown command hook");
   });
 });
 
@@ -577,7 +594,7 @@ describe("the hook command in every skill's frontmatter", () => {
   const log = join(bin, "ran.log");
   // The physical directory ($(pwd -P) would drop a trailing newline), so a cd that walked a symlink's logical parents shows where node really started.
   writeFileSync(join(bin, "node"), `#!/bin/sh\ncd -P . && printf '%s %s\\n' "$PWD" "$*" >> "${log}"\n`, { mode: 0o755 });
-  const SCRIPT = ".claude/skills/orc/status.mts";
+  const SCRIPT = ".claude/skills/orc/hook.mts";
   /** Runs the hook command with the given project directory and returns where node ran, or null when it never started. */
   const hookRun = (projectDir: string | undefined, cwd = tmpdir()): { ran: string | null; status: number | null; stdout: string } => {
     rmSync(log, { force: true });
@@ -603,7 +620,7 @@ describe("the hook command in every skill's frontmatter", () => {
     fixture.git("worktree", "add", "-q", "-b", "side", worktree);
     for (const [projectDir, root] of [[fixture.root, fixture.root], [deep, fixture.root], [worktree, worktree]] as const) {
       const result = hookRun(projectDir);
-      assert.equal(result.ran, `${realpathSync(root)} ./${SCRIPT} hook\n`, projectDir);
+      assert.equal(result.ran, `${realpathSync(root)} ./${SCRIPT}\n`, projectDir);
     }
   });
 
@@ -618,7 +635,7 @@ describe("the hook command in every skill's frontmatter", () => {
     mkdirSync(join(outer, "x"));
     symlinkSync(deep, join(outer, "x", "lnk"));
     symlinkSync(fixture.root, join(outer, "whole"));
-    for (const projectDir of [join(outer, "x", "lnk"), join(outer, "whole")]) assert.equal(hookRun(projectDir).ran, `${realpathSync(fixture.root)} ./${SCRIPT} hook\n`, projectDir);
+    for (const projectDir of [join(outer, "x", "lnk"), join(outer, "whole")]) assert.equal(hookRun(projectDir).ran, `${realpathSync(fixture.root)} ./${SCRIPT}\n`, projectDir);
   });
 
   test("a project directory whose name ends in a newline runs its own script, never its sibling's", () => {
@@ -630,7 +647,7 @@ describe("the hook command in every skill's frontmatter", () => {
     assert.ok(existsSync(join(sibling, SCRIPT)));
     assert.equal(hookRun(named).ran, null, "no script in the repository itself, so node never starts");
     withScript(named);
-    assert.equal(hookRun(named).ran, `${realpathSync(named)} ./${SCRIPT} hook\n`);
+    assert.equal(hookRun(named).ran, `${realpathSync(named)} ./${SCRIPT}\n`);
   });
 
   test("no node starts without the variable, outside a repository, in a bare repository or without the script", () => {
@@ -1649,6 +1666,13 @@ describe("/orc-discuss", () => {
     assert.equal(pickOf(fixture.verdict(["orc-discuss", "billing"])).offerAdd, true);
     assert.equal(goOf(fixture.verdict(["orc-discuss", "cli", "--new"]), "orc-discuss").visit, "revisit");
     assert.equal(pickOf(fixture.verdict(["orc-discuss", "gone", "--new"])).why, "dropped");
+  });
+
+  test("a first visit and a new entry name the wayfinder start, while a revisit does not", () => {
+    const fixture = new Fixture().setUp("local", [{ name: "cli", fields: ["Landing: local-merge"] }, { name: "web" }]);
+    assert.deepEqual(fixture.verdict(["orc-discuss", "web"]).reference, ["wayfinder"]);
+    assert.deepEqual(fixture.verdict(["orc-discuss", "billing", "--new"]).reference, ["wayfinder"]);
+    assert.deepEqual(fixture.verdict(["orc-discuss", "cli"]).reference, []);
     // A name that cannot be an entry asks for another.
     const invalid = pickOf(fixture.verdict(["orc-discuss", "Not Valid", "--new"]));
     assert.deepEqual([invalid.why, invalid.candidates, invalid.other, invalid.offerAdd], ["new-entry", [], true, false]);
@@ -1851,6 +1875,26 @@ describe("/orc-tickets", () => {
 });
 
 describe("/orc-build", () => {
+  test("on GitHub the go names the tracker's ready-for-agent label, which marking a ticket built removes", () => {
+    const fixture = githubRepo();
+    const run = runner(fakeGh({ subIssues: TICKETS })).run;
+    assert.equal(goOf(fixture.verdict(["orc-build"], run), "orc-build").readyLabel, null);
+    assert.doesNotMatch(fixture.text(["orc-build"], run), /ReadyLabel:/);
+    const row = (label: string) => `| Label in mattpocock/skills | Label in our tracker | Meaning |\n| --- | --- | --- |\n| \`ready-for-agent\` | \`${label}\` | Fully specified |\n`;
+    fixture.write("docs/agents/triage-labels.md", row("agent-ready")).commit("docs: triage labels");
+    assert.equal(goOf(fixture.verdict(["orc-build"], run), "orc-build").readyLabel, "agent-ready");
+    assert.match(fixture.text(["orc-build"], run), /^ {2}ReadyLabel: agent-ready$/m);
+    // A label the shell would split is never typed: the text withholds it.
+    fixture.write("docs/agents/triage-labels.md", row("ready for agent")).commit("docs: rename the label");
+    assert.match(fixture.text(["orc-build"], run), /^ {2}ReadyLabel: withheld$/m);
+  });
+
+  test("the local tracker has no ready-for-agent label to remove", () => {
+    const fixture = localWithTickets();
+    fixture.write("docs/agents/triage-labels.md", "| `ready-for-agent` | `ready-for-agent` | x |\n").commit("docs: triage labels");
+    assert.equal(goOf(fixture.verdict(["orc-build"]), "orc-build").readyLabel, null);
+  });
+
   test("a spec build goes with the tickets to build, their ids and blockers, and the config's knobs", () => {
     const verdict = localWithTickets().verdict(["orc-build"]);
     const go = goOf(verdict, "orc-build");
@@ -2298,7 +2342,7 @@ describe("the text form", () => {
   test("the banners say that GitHub bookkeeping goes with its step whatever push says", () => {
     const fixture = localWithTickets();
     const outward = (command: string): string => /^ {2}Outward: (.+)$/m.exec(fixture.text([command]))?.[1] ?? "";
-    assert.equal(outward("orc-build"), "none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels and the pending-decisions comment");
+    assert.equal(outward("orc-build"), "none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels (ready-for-agent removed) and the pending-decisions comment");
     assert.equal(outward("orc-discuss"), "pushes the default branch (per push); GitHub, whatever push says: edits or deletes the pending-decisions comment");
     assert.equal(outward("orc-land"), "per push: pushes, opens and merges PRs as the mode says, deletes origin/spec/<name>; GitHub, whatever push says: closes the issues");
   });
@@ -2632,7 +2676,7 @@ describe("the text form", () => {
         "      Target:  cli (as given)",
         "      Reads:   orc's verdict, the spec, its tickets, the registry lines they cite",
         "      Writes:  code and tests on spec/<name>, every commit with its ticket's Refs: trailer",
-        "      Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels and the pending-decisions comment",
+        "      Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels (ready-for-agent removed) and the pending-decisions comment",
         "    Lines:",
         "      Target:  cli (roadmap entry 1), spec .scratch/cli/spec.md",
         "      Pinned:  implement-spec @ 1a2b3c4, tdd @ 1a2b3c4, code-review @ 1a2b3c4",
@@ -2733,7 +2777,7 @@ describe("the text form", () => {
         "Upstream:",
         "  role=discuss skill=grilling path=.claude/skills/grilling/SKILL.md pin=1a2b3c4 invoke=skill-tool",
         "  role=domain skill=domain-modeling path=.claude/skills/domain-modeling/SKILL.md pin=1a2b3c4 invoke=skill-tool",
-        "Reference: none",
+        "Reference: wayfinder",
         "Go:",
         "  Mode: spec",
         "  Entry: number=1 name=cli spec=none branch=spec/cli",
@@ -2834,7 +2878,7 @@ describe("the text form", () => {
         "  Target:  cli (none given: the active spec)",
         "  Reads:   orc's verdict, the spec, its tickets, the registry lines they cite",
         "  Writes:  code and tests on spec/<name>, every commit with its ticket's Refs: trailer",
-        "  Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels and the pending-decisions comment",
+        "  Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels (ready-for-agent removed) and the pending-decisions comment",
         "Lines:",
         "  Target:  cli (roadmap entry 1), spec .scratch/cli/spec.md",
         "  Pinned:  implement-spec @ 1a2b3c4, tdd @ 1a2b3c4, code-review @ 1a2b3c4",
@@ -3305,17 +3349,27 @@ describe("the script as a program", () => {
     assert.match(result.stdout, /^orc verdict 1 orc go$/m);
   });
 
-  test("hook reads the tool call on stdin, answers allow for its own call only, and exits 0 with nothing on stderr", () => {
+  test("hook.mts reads the tool call on stdin, answers allow for its sibling status.mts only, and exits 0 with nothing on stderr", () => {
     const fixture = localWithTickets();
-    const hook = (command: string) =>
-      spawnSync(process.execPath, [SCRIPT_PATH, "hook"], { cwd: fixture.root, encoding: "utf8", env: GIT_ENV, input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }) });
-    const own = hook(`node "${SCRIPT_PATH}" orc-build 'cli' --core`);
+    const script = fixture.installOrc();
+    const hookPath = join(dirname(script), "hook.mts");
+    const hook = (input: string, args: readonly string[] = []) =>
+      spawnSync(process.execPath, [hookPath, ...args], { cwd: fixture.root, encoding: "utf8", env: GIT_ENV, input });
+    const call = (command: string, args: readonly string[] = []) => hook(JSON.stringify({ tool_name: "Bash", tool_input: { command } }), args);
+    const own = call(`node "${script}" orc-build 'cli' --core`);
     assert.deepEqual([own.status, own.stderr], [0, ""]);
-    assert.match(own.stdout, /^\{"hookSpecificOutput":\{"hookEventName":"PreToolUse","permissionDecision":"allow",/);
-    const other = hook(`node "${SCRIPT_PATH}" orc; rm -rf x`);
-    assert.deepEqual([other.status, other.stderr, other.stdout], [0, "", ""]);
-    const none = spawnSync(process.execPath, [SCRIPT_PATH, "hook"], { cwd: fixture.root, encoding: "utf8", env: GIT_ENV, input: "" });
-    assert.deepEqual([none.status, none.stderr, none.stdout], [0, "", ""]);
+    // The decision alone, with no newline after it.
+    assert.equal(own.stdout, `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"orc's own read-only status script"}}`);
+    // Nothing but the sibling status.mts: not the hook itself, not another checkout's script, and no argument on the hook's own command line.
+    for (const [what, result] of [
+      ["an operator", call(`node "${script}" orc; rm -rf x`)],
+      ["the hook itself", call(`node "${hookPath}" orc`)],
+      ["another checkout's script", call(`node "${SCRIPT_PATH}" orc`)],
+      ["an argument to the hook", call(`node "${script}" orc`, ["x"])],
+      ["empty input", hook("")],
+    ] as const) {
+      assert.deepEqual([result.status, result.stderr, result.stdout], [0, "", ""], what);
+    }
   });
 
   test("a child process that does not answer in time is killed and reported as a timeout", () => {

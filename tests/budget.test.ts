@@ -27,14 +27,17 @@ interface SkillBudget {
   frontLoad: number;
 }
 
+// Every skill states in its body what its frontmatter permission hook does (about 450 bytes, plus the core's source for
+// the --core skills), so a reader of the skill never meets an unexplained hook: that paragraph raised /orc to 3,000
+// and /orc-next's front-load to 13,000, and with the ready-for-agent removal in its marking step /orc-build to 12,500.
 const SKILL_BUDGETS: readonly SkillBudget[] = [
-  { command: "orc", skill: 2_600, frontLoad: 2_600 },
-  // 12,500 and 13,000: the core states the stale-verdict, re-invocation, banner and issue rules and the unsafe-argument outcome in full.
-  { command: "orc-next", skill: 5_200, frontLoad: 12_500 },
+  { command: "orc", skill: 3_000, frontLoad: 3_000 },
+  // 13,000: the core states the stale-verdict, re-invocation, banner and issue rules and the unsafe-argument outcome in full.
+  { command: "orc-next", skill: 5_200, frontLoad: 13_000 },
   { command: "orc-spec", skill: 6_000, frontLoad: 13_000 },
   { command: "orc-tickets", skill: 6_000, frontLoad: 13_000 },
   { command: "orc-discuss", skill: 12_000, frontLoad: 25_500 },
-  { command: "orc-build", skill: 12_000, frontLoad: 25_500 },
+  { command: "orc-build", skill: 12_500, frontLoad: 25_500 },
   { command: "orc-land", skill: 12_000, frontLoad: 25_500 },
   { command: "orc-setup", skill: 13_000, frontLoad: 27_000 },
 ];
@@ -99,10 +102,18 @@ describe("static front-load", () => {
       "      hooks:",
       "        - type: command",
       '          if: "Bash(node *)"',
-      `          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'`,
+      `          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'`,
       "---",
     ].join("\n");
     const wrong = COMMANDS.filter((command) => !skillText(command).includes(`disable-model-invocation: true\n${frontmatter}\n`));
+    assert.deepEqual(wrong, []);
+  });
+
+  test("every skill's body says what its permission hook does, and each --core skill where its core comes from", () => {
+    const hook =
+      "The `PreToolUse` hook in this file's frontmatter stays registered for the session: on each Bash call that runs `node`, it runs `orc/hook.mts`, which answers allow only when the whole command is the read-only status script `orc/status.mts` with the argument forms orc's skills type, and otherwise prints nothing, so the normal permission flow decides. It exists because script calls in later turns would otherwise ask for approval each time.";
+    const core = " The `Core:` block after the verdict is `orc/conventions.md`, the file beside the script.";
+    const wrong = COMMANDS.filter((command) => !skillText(command).includes(`\n\n${hook}${command === "orc" ? "" : core}\n\n`));
     assert.deepEqual(wrong, []);
   });
 });

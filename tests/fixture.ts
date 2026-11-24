@@ -56,7 +56,7 @@ const CORE_TEXT = "# Orc core\n\nThe banner first.\n";
 
 /** The script judged from `cwd` as if it were installed there: its own checkout is the one `cwd` is in. */
 export function environment(cwd: string, run: Runner, nodeVersion = "v24.18.0"): Environment {
-  return { cwd, scriptPath: SCRIPT_PATH, scriptDir: cwd, readInput: () => "", run, now: new Date("2026-11-22T09:14:03.456Z"), nodeVersion, readCore: () => CORE_TEXT };
+  return { cwd, scriptDir: cwd, run, now: new Date("2026-11-22T09:14:03.456Z"), nodeVersion, readCore: () => CORE_TEXT };
 }
 
 const tempDirs: string[] = [];
@@ -158,11 +158,12 @@ export class Fixture {
     return this.write("skills-lock.json", LOCK);
   }
 
-  /** Commits a copy of orc's script and core where the install puts them, and returns the script's path: the script reads only its own checkout. */
+  /** Commits a copy of orc's script, hook and core where the install puts them, and returns the script's path: the script reads only its own checkout. */
   installOrc(): string {
     const dir = join(this.root, ".claude", "skills", "orc");
     mkdirSync(dir, { recursive: true });
     copyFileSync(SCRIPT_PATH, join(dir, "status.mts"));
+    copyFileSync(join(dirname(SCRIPT_PATH), "hook.mts"), join(dir, "hook.mts"));
     copyFileSync(join(dirname(SCRIPT_PATH), "conventions.md"), join(dir, "conventions.md"));
     this.commit("chore: install orc");
     return join(dir, "status.mts");
