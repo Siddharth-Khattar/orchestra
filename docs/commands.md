@@ -21,7 +21,7 @@ What each one leaves behind, side by side. Pushes and new issues wait for the [`
 | `/orc-discuss` | default branch: the lock. Spec branch: one record commit when it resolves a pending record kept there | the default branch | edits or deletes the pending-decisions comment | the proposal, before anything reaches the registry |
 | `/orc-spec` | default branch: one | the default branch | creates the spec issue | creating the issue, as `push` says |
 | `/orc-tickets` | default branch: one, with the local tracker only | the default branch, with the local tracker only | creates the ticket issues | the breakdown |
-| `/orc-build` | spec branch: the code, each commit with its trailer, and record commits | nothing | adds `built` labels, writes the pending-decisions comment | the start, unless `buildStart` is `always` |
+| `/orc-build` | spec branch: the code, each commit with its trailer, and record commits | nothing | adds `built` labels (removing upstream's `ready-for-agent`), writes the pending-decisions comment | the start, unless `buildStart` is `always` |
 | `/orc-land` | spec branch: the default branch merged in and, with the local tracker, the tickets resolved. Default branch: the merge commit, which GitHub makes in the PR modes | the default branch or the spec branch, as the mode says | opens and merges the PR in `pr-agent`, opens it in `pr-human`, closes the issues | the landing, unless `push` is `always` |
 | `/orc` | none | nothing | nothing | nothing to confirm |
 | `/orc-next` | what the confirmed command makes | what that command pushes | what that command writes | the step itself, in its one question |
@@ -103,8 +103,9 @@ What it asks, in order:
 
 1. Whether to include uncommitted registry or glossary changes.
 2. Each pending decision: "Lock it as a new id" or "Reject it".
-3. The interview rounds.
-4. The proposal, with "Lock and commit (Recommended)" or "Change something first".
+3. On a first visit, whether to chart the work with upstream's `/wayfinder` first. The project interview asks this unless a finished map is there to read, while a spec interview asks only when a wayfinder map exists, which of them charts the entry, or when the entry looks too big for one session.
+4. The interview rounds.
+5. The proposal, with "Lock and commit (Recommended)" or "Change something first".
 
 Nothing reaches the registry before that last answer. On a revisit, an answer that contradicts a locked id becomes a new id that supersedes it, and taking an entry out of the plan gives it a `Dropped:` line.
 
@@ -163,7 +164,7 @@ A ticket added to a landed entry is built and landed like the first set.
 | Runs | upstream `implement-spec` or `implement`, with `tdd` and `code-review`, at their locked commits |
 | Reads | orc's verdict, the spec, its tickets, the registry lines they cite |
 | Writes | code and tests on `spec/<name>`, every commit with its ticket's `Refs:` trailer |
-| Outward | none (no push, no PR; `/orc-land` lands the branch); GitHub, whatever `push` says: `built` labels and the pending-decisions comment |
+| Outward | none (no push, no PR; `/orc-land` lands the branch); GitHub, whatever `push` says: `built` labels (`ready-for-agent` removed) and the pending-decisions comment |
 | Points next | `/orc-land <name>`, or `/orc-discuss <name>` when it recorded pending decisions |
 
 With a spec (or nothing) it builds every ticket that is not built yet, the way the config's `build` key says. With a ticket it builds that one through upstream `implement`, once its blockers are built.

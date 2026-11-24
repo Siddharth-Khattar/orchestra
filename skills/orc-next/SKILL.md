@@ -9,7 +9,7 @@ hooks:
       hooks:
         - type: command
           if: "Bash(node *)"
-          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'
+          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'
 ---
 
 # /orc-next
@@ -17,6 +17,8 @@ hooks:
 Every Bash call in this run, from the first, is one simple command: no `&&`, `;`, shell pipes (`|`) or `$(...)`.
 
 The verdict and orc's core are at the end of this file; the core says how to read them. Every script call in this run, also inside a command it runs, starts with `node "${CLAUDE_SKILL_DIR}/../orc/status.mts"`, exactly as written here. If the end holds no verdict, print `/orc-next  (GSD: next)`, then call the script with `orc-next --core`.
+
+The `PreToolUse` hook in this file's frontmatter stays registered for the session: on each Bash call that runs `node`, it runs `orc/hook.mts`, which answers allow only when the whole command is the read-only status script `orc/status.mts` with the argument forms orc's skills type, and otherwise prints nothing, so the normal permission flow decides. It exists because script calls in later turns would otherwise ask for approval each time. The `Core:` block after the verdict is `orc/conventions.md`, the file beside the script.
 
 ## 1. Propose
 
@@ -30,7 +32,7 @@ Otherwise ask one AskUserQuestion whose question holds `Next step: <command>  (<
 
 ## 2. Run it
 
-Picking it is the explicit invocation the command needs. Every orc command is user-invoked, so never use the Skill tool for it: its refusal also forbids following the skill another way. Read `${CLAUDE_SKILL_DIR}/../<skill>/SKILL.md`, `<skill>` being the command's first word without the slash, and follow it as written, the command's target as its argument, with these overrides:
+The user's pick in this picker is the user invoking that one orc command: these pickers offer only orc's own commands, and the run carries out only the one the user picked. orc's commands are user-invoked only, so never use the Skill tool for one: read `${CLAUDE_SKILL_DIR}/../<skill>/SKILL.md`, `<skill>` being the command's first word without the slash, and follow it as written, the command's target as its argument, with these overrides:
 
 - The verdict the picker showed is that run's verdict, already judged for the target, and its banner was printed in the question, so the run starts without a script call: the file's injected placeholder, its no-verdict call and its typed-argument call do not apply. Every later call the file or the core asks for is made: a fresh verdict after a write or a compaction, a lookup.
 - In that file, `${CLAUDE_SKILL_DIR}` means `${CLAUDE_SKILL_DIR}/../<skill>` (its templates and `reference.md`), except in a script call, which keeps this skill's own prefix.

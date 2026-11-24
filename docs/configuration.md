@@ -62,10 +62,10 @@ A profile is a set of starting values and nothing more. Setup writes them into t
 | Profile | research | build | reviewFixRounds | landing | buildStart |
 |---|---|---|---|---|---|
 | hackathon | off | implement-spec | 1 | local-merge | always |
-| mvp | on-demand | implement-spec | 1 | pr-agent | ask |
+| mvp | always | implement-spec | 2 | local-merge | ask |
 | production | always | implement | 2 | pr-human | ask |
 
-`push` starts at `ask` in all three. Choosing another profile in a later `/orc-setup` run rewrites these five keys, hand edits included, as its question says. Both PR modes need a GitHub remote and `gh`. Without them, setup offers to fall back to `local-merge` when the tracker is local markdown, while with the GitHub tracker it stops, since the tracker needs them as well.
+`push` starts at `ask` in all three. Choosing another profile in a later `/orc-setup` run rewrites these five keys, hand edits included, as its question says. Only production lands by PR, and both PR modes need a GitHub remote and `gh`. Without them, setup offers production a fallback to `local-merge` when the tracker is local markdown, while with the GitHub tracker it stops, since the tracker needs them as well.
 
 ## The push setting
 
@@ -76,7 +76,7 @@ A profile is a set of starting values and nothing more. Setup writes them into t
 | Push the default branch after a docs commit (`/orc-discuss`, `/orc-spec`, `/orc-tickets`) | a picker showing the unpushed commits | pushes | no push |
 | Create the spec and ticket issues (GitHub) | a picker showing the titles | creates them | prints ready-to-run `gh issue create` commands and ends there |
 | Land: push, open or merge a PR, merge into the default branch, delete `origin/spec/<name>` | the landing confirmation | goes ahead, printing the confirmation as a message | `local-merge` lands without pushing; the PR modes cannot run |
-| Bookkeeping on existing GitHub issues: `built` labels, the pending-decisions comment, closing issues at landing | part of its step | part of its step | part of its step |
+| Bookkeeping on existing GitHub issues: `built` labels (removing `ready-for-agent`), the pending-decisions comment, closing issues at landing | part of its step | part of its step | part of its step |
 
 Two things are worth knowing about this table:
 

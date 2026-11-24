@@ -36,6 +36,8 @@ Setup asks four things in one picker:
 | Extras | Core only (recommended), Choose extras | Core only |
 | Test command | None for now, Type one | `npm test`, typed in |
 
+This run predates two changes to setup: it now recommends mvp in every repo, and it vendors `codebase-design` as a fourteenth core skill, since upstream's `tdd` calls it.
+
 It then clones upstream, vendors its thirteen core skills at that clone's commit, and runs upstream's own setup with the tracker already answered. Before anything from that is written you get the full draft inside a picker ("Write as drafted" or "Edit first"). The last question lists every path setup created and offers to commit them:
 
 ```
@@ -282,6 +284,21 @@ With the GitHub Issues tracker and a PR landing mode the commands are the same, 
 - the pending decision kept as one comment on the spec issue, and the tickets closed with a comment at landing instead of getting a `Status:` line.
 
 In `pr-agent` mode `/orc-land` pushes the branch, opens the PR, waits for the checks on the commit it tested and merges that commit. In `pr-human` it opens the PR and stops; once someone has merged it with a merge commit, `/orc-land` again finishes the entry. [Concepts](concepts.md#landing-modes) has the details.
+
+## Upstream extras alongside orc
+
+Setup can vendor any of upstream's other skills next to the core chain. None of them replaces an orc command, although a few of them keep state of their own, so it helps to know where each one slots in.
+
+| Skill | Where it fits | Worth knowing |
+|---|---|---|
+| `wayfinder` | before `/orc-discuss`, when a project or an entry is too foggy for one interview | `/orc-discuss` offers it and reads the finished map into the registry. Bring the map back through `/orc-discuss`, not straight to `/to-spec` as `ask-matt` suggests, or its decisions never get ids. For one entry, name the effort `<entry>-map`: an effort named after the entry itself would put its local tickets where orc reads that entry's build tickets |
+| `prototype` | inside an interview, to try an idea before locking it | throwaway code on a `prototype/<name>` branch, so lock what you learned in the registry |
+| `diagnosing-bugs` | a bug after landing, or a fix loop in `/orc-build` that keeps failing | it can trigger by itself on "broken" or "failing". A fix for a landed entry is best tracked as a new entry or ticket so its commits carry a `Refs:` trailer |
+| `improve-codebase-architecture` | between entries | each candidate it finds can become a new entry through `/orc-discuss` |
+| `triage` | an on-ramp for issues other people file | a triaged request becomes an entry through `/orc-discuss`, or a ticket a maintainer adopts with `orc-ticket`. Orc's own tickets are built by `/orc-build`, not `/implement`, and `/orc-build` removes `ready-for-agent` once it marks one built, so the triage queue stops offering it |
+| `retro` | after a build or a landing | suggestions for `CLAUDE.md` may belong in `.claude/rules/` instead |
+| `handoff` | rarely needed | `/orc` rebuilds where things stand from git and the tracker after any `/clear` |
+| `wait-what`, `writing-for-agents` | anywhere | no overlap with orc |
 
 ---
 

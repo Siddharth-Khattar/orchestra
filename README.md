@@ -47,7 +47,7 @@ What it deliberately leaves out:
 - **No edits to `CLAUDE.md` or `AGENTS.md`.** Orc never creates or changes either file.
 
 > [!NOTE]
-> **Early release (0.1.0).** The status script is covered by an automated test suite, while the commands themselves have been exercised mostly in scripted headless Claude Code sessions, where a script answers the pickers. Interactive use may still show rough edges, such as how a picker reads at a glance. If you hit one, please [open an issue](https://github.com/Siddharth-Khattar/orchestra/issues).
+> **Early release (0.2.0).** The status script is covered by an automated test suite, while the commands themselves have been exercised mostly in scripted headless Claude Code sessions, where a script answers the pickers. Interactive use may still show rough edges, such as how a picker reads at a glance. If you hit one, please [open an issue](https://github.com/Siddharth-Khattar/orchestra/issues).
 
 ## Quick start
 
@@ -134,7 +134,7 @@ Never, and neither does upstream's setup when it runs through `/orc-setup`. The 
 It is best avoided. Orc recognises a landing by the per-ticket commits reaching the default branch, so a squashed or rebased PR reads as `squashed` and is left for you to check by hand.
 
 **What does `/orc-discuss` mean by `/wayfinder`?**
-It is an upstream skill for charting a project that is too foggy to settle in one interview. The project interview offers it as an escape hatch, and can read a finished map's decisions into the registry.
+It is an upstream skill for charting work that is too foggy to settle in one interview. The project interview offers it as an escape hatch, and so does a spec interview's first visit when the entry looks too big for one session. Either can read a finished map's decisions into the registry.
 
 **How much context does a command cost?**
 Each command's skill text and verdict have byte budgets that the test suite enforces, and a step command's verdict is built to stay the same size as the registry and the roadmap grow. [How it works](docs/how-it-works.md#context-cost) has the numbers.

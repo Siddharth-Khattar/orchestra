@@ -9,7 +9,7 @@ hooks:
       hooks:
         - type: command
           if: "Bash(node *)"
-          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'
+          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'
 ---
 
 # /orc-land
@@ -17,6 +17,8 @@ hooks:
 Every Bash call in this run, from the first, is one simple command: no `&&`, `;`, shell pipes (`|`) or `$(...)`.
 
 The verdict and orc's core are at the end of this file; the core says how to read them. Every script call below starts with `node "${CLAUDE_SKILL_DIR}/../orc/status.mts"`, exactly as written here. Paths are from the checkout root, `${CLAUDE_SKILL_DIR}/../../..`, also when the session started in a subdirectory: Read, Edit and Write take them under that root, and git takes them as `:/<path>`. If the end holds no verdict, print `/orc-land  (GSD: ship)` and `Target:  <argument, or none>`, then call the script with `orc-land '<argument>' --core` (no argument: `orc-land --core`).
+
+The `PreToolUse` hook in this file's frontmatter stays registered for the session: on each Bash call that runs `node`, it runs `orc/hook.mts`, which answers allow only when the whole command is the read-only status script `orc/status.mts` with the argument forms orc's skills type, and otherwise prints nothing, so the normal permission flow decides. It exists because script calls in later turns would otherwise ask for approval each time. The `Core:` block after the verdict is `orc/conventions.md`, the file beside the script.
 
 **Fetch first.** With `Origin: yes`, whatever the outcome of the verdict this run was given (injected, or carried by `/orc-next`), a stop included, the first tool call after the banner is `git fetch origin --prune`, and the verdict that decides is the one taken right after it. That call holds what the user typed and nothing else: `orc-land` alone when no argument was typed, even though the given verdict names an entry, since only the bare call can ask about leftovers; `orc-land '<argument>'` when one was typed or `/orc-next` handed one over. The given one predates the fetch: a PR merged elsewhere, or commits pushed since, read as unknown or stopped until fetched.
 

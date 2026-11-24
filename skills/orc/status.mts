@@ -2,7 +2,7 @@
 // ABOUTME: `status.mts <command> ['<target>']` prints a verdict, `registry '<key>'... [--project]` registry lines, `locked '<stamp>'` the locked-lines check.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -405,10 +405,10 @@ export function specIds(registry: Registry, entry: RoadmapEntry): string[] {
   return [...requirementsOf(registry, entry), ...decisions];
 }
 
-/** Every live `-> project` decision. */
+/** Every live decision that holds for every spec: `-> project`, and `-> wayfinder <ref>`, which the project interview writes for a map's decisions. */
 export function projectDecisions(registry: Registry): string[] {
   return liveIds(registry)
-    .filter((line) => line.kind === "decision" && line.link === "project")
+    .filter((line) => line.kind === "decision" && (line.link === "project" || line.link?.startsWith("wayfinder ") === true))
     .map((line) => line.id);
 }
 
@@ -602,6 +602,16 @@ export function parseBlockedBy(value: string | null, entryName: string): string[
     ([, name, digits = ""]) => `${name ?? entryName}/${digits.padStart(2, "0")}`,
   );
   return [...new Set(refs)];
+}
+
+/** The label a triage mapping's `ready-for-agent` row gives in its second column, backticked as upstream writes it; null without that row. */
+export function readyForAgentLabel(mapping: string): string | null {
+  for (const line of normaliseLineEndings(mapping).split("\n")) {
+    const cells = line.split("|").map((cell) => cell.trim());
+    if (cells[1] !== "`ready-for-agent`") continue;
+    return /^`([^`]+)`$/.exec(cells[2] ?? "")?.[1] ?? null;
+  }
+  return null;
 }
 
 export function parseLocalTicket(entryName: string, dir: string, fileName: string, rawText: string): TicketFact | null {
@@ -1524,6 +1534,8 @@ export type Go = { kind: "go" } & (
       defaultBranch: string; pending: PendingFact | null;
       /** Local tracker: the built tickets the spec branch does not mark built yet; null on GitHub. */
       toMark: string[] | null;
+      /** GitHub: the label upstream's triage mapping gives `ready-for-agent`, which marking a ticket built removes; null without one. */
+      readyLabel: string | null;
     }
   | {
       for: "orc-land"; entry: EntryRef; next: NextStep; mode: LandingMode; modeSource: "entry" | "config"; push: Push; phase: "land" | "cleanup";
@@ -1659,7 +1671,7 @@ const BANNERS: Record<Command, BannerText> = {
     runs: "upstream implement-spec or implement, with tdd and code-review, at their locked commits",
     reads: "orc's verdict, the spec, its tickets, the registry lines they cite",
     writes: "code and tests on spec/<name>, every commit with its ticket's Refs: trailer",
-    outward: "none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels and the pending-decisions comment",
+    outward: "none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels (ready-for-agent removed) and the pending-decisions comment",
   },
   "orc-land": {
     title: "/orc-land  (GSD: ship)",
@@ -1728,6 +1740,8 @@ export interface Facts {
   localTicketFilesUncommitted(name: string): boolean;
   /** Whether upstream's setup wrote its triage label mapping, which it does when it creates those labels. */
   triageLabels(): boolean;
+  /** The label that mapping gives upstream's `ready-for-agent` role; null without the mapping or the row. */
+  readyForAgentLabel(): string | null;
 }
 
 /** The stop for a doc that exists and cannot be read: never the path that would write a new one over it. */
@@ -2524,7 +2538,9 @@ function discussVerdict(request: Request, judged: JudgedRoadmap): Verdict {
     tracker: judged.config.tracker, push: judged.config.push, landing: judged.config.landing, pending,
     remote: repo.remote, uncommitted, problems,
   };
-  return verdictOf(request, { ...parts, reference: [...(onBranch ? ["pending-on-branch"] : []), ...nullRole(uses)], outcome: go });
+  // A first visit may find the entry too foggy for one interview, so it reads the wayfinder start; a revisit has its decisions already.
+  const wayfinder = entry.discussed ? [] : ["wayfinder"];
+  return verdictOf(request, { ...parts, reference: [...wayfinder, ...(onBranch ? ["pending-on-branch"] : []), ...nullRole(uses)], outcome: go });
 }
 
 /** A new entry the user chose to add: a first visit of an entry numbered after the roadmap's last, judged like one. */
@@ -2542,7 +2558,7 @@ function newEntryVerdict(
     tracker: judged.config.tracker, push: judged.config.push, landing: judged.config.landing, pending: null,
     remote: judged.repo.remote, uncommitted: judgedHere.uncommitted, problems: judgedHere.problems,
   };
-  return verdictOf(request, { lines, upstream: judgedHere.uses, reference: nullRole(judgedHere.uses), outcome: go });
+  return verdictOf(request, { lines, upstream: judgedHere.uses, reference: ["wayfinder", ...nullRole(judgedHere.uses)], outcome: go });
 }
 
 type WithTarget = (parts: Partial<Omit<Verdict, "outcome">> & { outcome: Verdict["outcome"] }) => Verdict;
@@ -2696,6 +2712,7 @@ function buildVerdictFor(request: Request, judged: Judged, view: EntryView, tick
     agentBranches, dirtyOther: repo.dirty.other, reviewFixRounds: config.reviewFixRounds, research: config.research,
     test: config.test, buildStart: config.buildStart, defaultBranch: repo.defaultBranch, pending: view.pending,
     toMark: config.tracker === "local" ? built.filter((ref) => unmarked.includes(ref)) : null,
+    readyLabel: config.tracker === "github" ? facts.readyForAgentLabel() : null,
   };
   const reference = [
     ...(agentBranches.some((b) => b.unmerged > 0) ? ["agent-branches"] : []),
@@ -3046,6 +3063,7 @@ function goFields(go: Go, indent: string): string[] {
         kv("DefaultBranch", safe(go.defaultBranch, isSafeName)),
         kv("Pending", pendingText(go.pending, go.entry.name)),
         ...(go.toMark === null ? [] : [kv("ToMark", list(go.toMark, safeRef))]),
+        ...(go.readyLabel === null ? [] : [kv("ReadyLabel", safe(go.readyLabel, isSafeName))]),
       ];
     case "orc-land":
       return [
@@ -3575,6 +3593,11 @@ class Gatherer implements Facts {
     return this.docs.read(TRIAGE_LABELS_PATH).kind === "text";
   }
 
+  readyForAgentLabel(): string | null {
+    const mapping = textOf(this.docs.read(TRIAGE_LABELS_PATH));
+    return mapping === null ? null : readyForAgentLabel(mapping);
+  }
+
   localTicketFilesUncommitted(name: string): boolean {
     return this.gitOut(["status", "--porcelain", "-z", "--untracked-files=all", "--", `.scratch/${name}/issues`]) !== "";
   }
@@ -3923,12 +3946,8 @@ function memoByConfig<T>(compute: (config: Config) => T): (config: Config) => T 
 
 export interface Environment {
   cwd: string;
-  /** This script's own path; the permission hook allows only calls that resolve to it. */
-  scriptPath: string;
   /** The directory this script lives in: its checkout's repository is the only one the script reads. */
   scriptDir: string;
-  /** Standard input, which only the permission hook reads. */
-  readInput: () => string;
   run: Runner;
   now: Date;
   nodeVersion: string;
@@ -3942,10 +3961,10 @@ export interface Output {
 }
 
 const USAGE_LINE =
-  "usage: status.mts <command> ['<target>'] [--json] [--core], status.mts orc-discuss '<new entry>' --new [--json] [--core], status.mts registry ['<key>'...] [--project] [--json], status.mts locked '<commit>' ['<entry>'] [--json], or status.mts hook (a PreToolUse call on stdin)";
+  "usage: status.mts <command> ['<target>'] [--json] [--core], status.mts orc-discuss '<new entry>' --new [--json] [--core], status.mts registry ['<key>'...] [--project] [--json], or status.mts locked '<commit>' ['<entry>'] [--json]";
 
 interface ParsedArgs {
-  kind: "verdict" | "lookup" | "locked" | "hook";
+  kind: "verdict" | "lookup" | "locked";
   command: Command | null;
   argument: string | null;
   keys: string[];
@@ -3970,9 +3989,6 @@ export function parseArgs(args: readonly string[]): ParsedArgs {
   const unknownFlag = flags.find((f) => f !== "--json" && f !== "--core" && f !== "--project" && f !== "--new");
   if (unknownFlag !== undefined) return { ...base, usage: `unknown flag ${safe(unknownFlag, (f) => /^--[a-z][a-z-]*$/.test(f))}` };
   if (newEntry && (first !== "orc-discuss" || rest.length !== 1)) return { ...base, usage: "--new goes with orc-discuss and the new entry's name" };
-  if (first === "hook") {
-    return args.length === 1 ? { ...base, kind: "hook" } : { ...base, kind: "hook", usage: "hook takes nothing but the tool call on stdin" };
-  }
   if (first === "locked") {
     if (core || project) return { ...base, kind: "locked", usage: "locked takes only --json" };
     const [since, entry, extra] = rest;
@@ -4078,48 +4094,9 @@ function verdictFor(parsed: ParsedArgs, env: Environment): Verdict {
   return buildVerdict({ command, argument: parsed.argument, newEntry: parsed.newEntry, facts, now: env.now }, env.nodeVersion);
 }
 
-// ---------------------------------------------------------------------------
-// The permission hook (spec 9.4)
-// ---------------------------------------------------------------------------
-
-/** One argument as the skills type it: a flag, a bare word with no shell-special character, or a single-quoted value. */
-const HOOK_ARGUMENT = "(?:--[a-z]+|[A-Za-z0-9][A-Za-z0-9._/-]*|'[\\p{L}\\p{M}\\p{N}_./#: -]+')";
-const HOOK_CALL = new RegExp(`^node "(/[^"$\`\\\\\\n]+)"(?: ${HOOK_ARGUMENT})*$`, "u");
-
-/**
- * The answer to a PreToolUse call: allow when the Bash command is `node "<absolute path>" <arguments>`, the path
- * resolving to this very script and every argument one the skills type; otherwise nothing, so the normal permission
- * flow decides. Nothing in the command can reach a shell: no operator, substitution, glob, redirect or other quote.
- */
-export function hookDecision(inputText: string, scriptPath: string): string {
-  let input: unknown;
-  try {
-    input = JSON.parse(inputText);
-  } catch {
-    return "";
-  }
-  if (!isRecord(input) || input.tool_name !== "Bash" || !isRecord(input.tool_input)) return "";
-  const command = input.tool_input.command;
-  if (typeof command !== "string") return "";
-  const path = HOOK_CALL.exec(command)?.[1];
-  if (path === undefined) return "";
-  const self = realpathOr(scriptPath);
-  if (!existsSync(path) || realpathOr(path) !== self) return "";
-  return JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "orc's own read-only status script" } });
-}
-
 /** The whole program: every outcome, every failure included, is printed as data and exits 0. */
 export function runStatus(args: readonly string[], env: Environment): Output {
   const parsed = parseArgs(args);
-  // The hook's output is read as a decision, so it prints the decision alone or nothing at all.
-  if (parsed.kind === "hook") {
-    if (parsed.usage !== null) return { code: 0, stdout: "" };
-    try {
-      return { code: 0, stdout: hookDecision(env.readInput(), env.scriptPath) };
-    } catch {
-      return { code: 0, stdout: "" };
-    }
-  }
   let text: string;
   try {
     text =
@@ -4136,9 +4113,7 @@ export function runStatus(args: readonly string[], env: Environment): Output {
 export function defaultEnvironment(): Environment {
   return {
     cwd: process.cwd(),
-    scriptPath: import.meta.filename,
     scriptDir: import.meta.dirname,
-    readInput: () => readFileSync(0, "utf8"),
     run: systemRunner,
     now: new Date(),
     nodeVersion: process.version,

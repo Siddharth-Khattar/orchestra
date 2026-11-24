@@ -184,7 +184,7 @@ and the config's `push` decides how it is approved:
 | Push the default branch after a docs commit (`/orc-discuss`, `/orc-spec`, `/orc-tickets`) | picker, the commits in its question | pushes | no push |
 | Create the spec and ticket issues (GitHub) | picker, the titles in its question | creates | prints `gh issue create` commands and stops |
 | Land: push, open or merge a PR, merge into the default branch, delete `origin/spec/<name>` | the landing picker (7.5) | goes ahead, the question printed as a message | `local-merge` without a push; PR modes stop |
-| Bookkeeping on GitHub: `built` labels, the pending-decisions comment, closing comments and `gh issue close` | part of its step | part of its step | part of its step |
+| Bookkeeping on GitHub: `built` labels (removing `ready-for-agent`), the pending-decisions comment, closing comments and `gh issue close` | part of its step | part of its step | part of its step |
 
 Bookkeeping is named in its step's banner, which says it happens whatever
 `push` says, and is approved with the step (the build's start, the lock, the
@@ -316,7 +316,7 @@ in every command orc runs.
 
 ```
 skills/
-  orc/            SKILL.md, conventions.md, status.mts
+  orc/            SKILL.md, conventions.md, status.mts, hook.mts
   orc-setup/      SKILL.md, reference.md, rules-template.md, config-template.json
   orc-discuss/    SKILL.md, reference.md, registry-template.md
   orc-spec/       SKILL.md
@@ -338,14 +338,17 @@ docs/concepts.md        the registry, entry states, trackers, landing modes, pen
 docs/configuration.md   the config keys, the profiles, the push setting, updating
 docs/troubleshooting.md the stops, what to do about each, and the limits of v1
 docs/how-it-works.md    the script, the verdict, the permission hook, the budgets, the tests
+docs/assets/            the logo and figures, each figure with its HTML source under src/
 README.md
 CHANGELOG.md            the changes in each release
+CONTRIBUTING.md         what lives where, setup, and what a change touches
+.github/                the bug report form and the pull request template
 LICENSE                 MIT
 CLAUDE.md               the user's, never edited by a build
 ```
 
 Only `skills/` is installed into a target repo: eight skills, one script,
-the shared core, four reference files and three templates. The four step
+the permission hook of 9.4, the shared core, four reference files and three templates. The four step
 wrappers (spec, tickets, build, land) are thin: the verdict, the brief for
 upstream, and the pointer. Anything beyond this list needs a reason written
 into this spec first.
@@ -408,9 +411,10 @@ the file. `orc-build` names `notes` when `research` is `always`, since an
 - `orc-setup`: the update run (its first picker, the upstream diff and
   re-add, removed skills), since a first run takes none of it; successor
   resolution sits in the skill, since a first run can need it too.
-- `orc-discuss`: the project interview with its wayfinder start, resolving a
-  pending record on the spec branch, and a `null` role, since a repo runs the
-  project interview once.
+- `orc-discuss`: the project interview, the wayfinder start (which the
+  project interview follows, and the verdict names on a spec interview's
+  first visit), resolving a pending record on the spec branch, and a `null` role,
+  since a repo runs the project interview once.
 - `orc-build`: leftover `worktree-agent-*` branches, the review-only start,
   exploration notes and a `null` role, since a first build of a spec takes
   none of them.
@@ -461,15 +465,16 @@ A first run:
    ("Core only" or "Choose extras"), and the test command (each candidate the
    verdict found in `package.json`'s `test` script or a Makefile `test`
    target, "None for now", or one typed in, which must be a single simple
-   command). The GitHub tracker and the PR profiles need a
-   working `gh`, which the verdict reports; local markdown without it can
-   fall back to `local-merge`.
+   command). Mvp is recommended. The GitHub tracker and the production
+   profile, which lands by PR, need a working `gh`, which the verdict
+   reports; local markdown without it can fall back to `local-merge`.
 3. Clone upstream shallowly; its `HEAD` is the run's one pin. Read the
    promoted list from `.claude-plugin/plugin.json`; in-progress skills are
    never offered.
 4. Vendor the core chain (`grilling`, `domain-modeling`, `grill-with-docs`,
    `research`, `to-spec`, `to-tickets`, `implement`, `implement-spec`, `tdd`,
-   `code-review`, `pr`, `ask-matt`, `setup-matt-pocock-skills`) and the
+   `codebase-design`, which `tdd` calls, `code-review`, `pr`, `ask-matt`,
+   `setup-matt-pocock-skills`) and the
    chosen extras, offered in groups of four since the native picker holds
    four options, with `npx -y skills@1 add mattpocock/skills#<pin> -s <names>
    -a claude-code --copy -y`. When one of those skills already has a folder
@@ -575,8 +580,17 @@ project interview, else the `next` of a verdict taken after the commit.
 A project whose fog cannot be cleared in one session is a case for upstream's
 `wayfinder`. Orc does not build on it by default, since it spreads decisions
 over many sessions, which works against the speed goal. The project interview
-offers it as an escape hatch and reads the finished map's decisions into the
-registry.
+offers it as an escape hatch, and so does a spec interview's first visit
+(the verdict names the `wayfinder` heading), which asks which existing map,
+if any, charts the entry, or offers charting when the entry looks too big
+for one interview. Either reads the finished map's decisions into the
+registry, a spec interview's as `-> spec <name>` decisions with
+`(wayfinder <ref>)` after the gist. A
+finished map comes back through `/orc-discuss`, never straight to `to-spec`
+as upstream's `ask-matt` suggests, since its decisions would get no ids. The
+effort is never named after a roadmap entry: its local tickets would sit in
+`.scratch/<entry>/issues/`, where the script reads that entry's build
+tickets.
 
 ### 7.3 `/orc-spec` and `/orc-tickets`
 
@@ -586,8 +600,9 @@ branch.
 `/orc-spec` acts on a discussed entry with no `Spec:` line and follows
 upstream `to-spec`. The verdict lists the ids that apply (the entry's
 requirements and every decision linked to `spec <name>`, never a superseded
-one) and counts the live `-> project` decisions, and the run fetches their
-lines, the project decisions' and the entry's own lines through the lookup
+one) and counts the live project decisions (`-> project` and `-> wayfinder
+<ticket>`), and the run fetches their lines, the project decisions' and the
+entry's own lines through the lookup
 (9.3). The brief carries those lines, never the registry file: it answers the
 seam check from the `Seams:` line, asks for the ids to be cited (a
 `Registry:` line first, then per story and decision), reads the ADRs the
@@ -711,9 +726,14 @@ the spec branch, before the next ticket or the review starts (GitHub: the
 `built` label; local: `Status: built`, in a record commit `docs: mark <name>
 tickets built` on the spec branch), after its worktree and branch are
 removed. A repo whose `built` label setup was told to skip gets no marks,
-which the run says once. A build cut off part way then leaves only the
-tickets in flight undone, and the marks only mirror what the trailers already
-say.
+which the run says once. On GitHub a separate edit per issue removes the
+label upstream's triage mapping gives `ready-for-agent` (the go's
+`ReadyLabel:`, read from `docs/agents/triage-labels.md` and withheld when it
+is not a safe name) from each built ticket and from the spec issue, since
+`to-spec` and `to-tickets` apply it and upstream's triage queue would
+otherwise keep offering them to `/implement`, outside the spec branch. Its
+failure is said once and leaves the `built` marks as they are. A build cut off part way then leaves only the tickets in flight
+undone, and the marks only mirror what the trailers already say.
 
 **End.** The run removes leftover worktrees and merged `worktree-agent-*`
 branches, marks anything built and not marked yet, and takes a fresh verdict
@@ -906,8 +926,10 @@ tracker and git. These rules keep the file append-only and parseable:
 
 - A decision links to its ADR (`-> docs/adr/...`), to `-> project` when it
   holds for every spec, to `-> spec <name>` when one entry applies it, or to
-  `-> wayfinder <ticket>` when it came from a wayfinder map. A requirement
-  names its entries in `(spec: ...)`.
+  `-> wayfinder <ticket>` when the project interview read it from a wayfinder
+  map, which counts as a project decision. A map charted for one entry gives
+  `-> spec <name>` decisions, the ticket named at the end of the gist. A
+  requirement names its entries in `(spec: ...)`.
 - A correction is a new id with `(supersedes <id>)` after its gist; the old
   line stays as it is and does not apply from then on. A requirement that
   only gains a delivering entry is not a correction: that entry adds a
@@ -997,7 +1019,7 @@ comment deleted.
 | Profile | research | build | reviewFixRounds | landing | buildStart |
 |---|---|---|---|---|---|
 | hackathon | off | implement-spec | 1 | local-merge | always |
-| mvp | on-demand | implement-spec | 1 | pr-agent | ask |
+| mvp | always | implement-spec | 2 | local-merge | ask |
 | production | always | implement | 2 | pr-human | ask |
 
 `push` starts as `ask` and `uat` as `off` in every profile, and `test` comes
@@ -1170,13 +1192,13 @@ node "${CLAUDE_SKILL_DIR}/../orc/status.mts" <command> --core              the i
 node "${CLAUDE_SKILL_DIR}/../orc/status.mts" <command> '<target>'          the fallback with a typed target
 node "${CLAUDE_SKILL_DIR}/../orc/status.mts" orc-discuss '<name>' --new    the fallback for a new roadmap entry
 node "${CLAUDE_SKILL_DIR}/../orc/status.mts" registry '<key>' ['<key>']    registry lines by id or entry name
-node "${CLAUDE_SKILL_DIR}/../orc/status.mts" registry --project           every live -> project decision
+node "${CLAUDE_SKILL_DIR}/../orc/status.mts" registry --project           every live project decision
 node "${CLAUDE_SKILL_DIR}/../orc/status.mts" locked '<stamp>' ['<entry>']  the locked-lines check of section 8
 ```
 
-The skills' permission hook (9.4) runs a seventh form, `status.mts hook`,
-which reads a `PreToolUse` call on stdin and prints an allow decision or
-nothing; no run calls it.
+The skills' permission hook (9.4) is a separate file beside the script,
+`hook.mts`, which reads a `PreToolUse` call on stdin and prints an allow
+decision or nothing; no run calls it, and the script has no hook form.
 
 `<command>` is `orc`, `orc-next`, `orc-setup`, `orc-discuss`, `orc-spec`,
 `orc-tickets`, `orc-build` or `orc-land`, always first, so an entry may share
@@ -1230,18 +1252,19 @@ and a target whose state is `unknown` because a lookup failed is a stop.
 | Command | Stops after those, in order | A go carries |
 |---|---|---|
 | `orc-setup` | the session directory is not the checkout root, where setup writes; a config, registry or `skills-lock.json` that exists but cannot be read | `run` (first or update), the current config values, the keys it lacks and those with unknown values, `trackerLocked` (a `Spec:` line exists), the remote (`github`, `other`, `none`), `gh`, the test command candidates (data), the skills vendored from upstream (`skills-lock.json` entries whose source is `mattpocock/skills`; any other pack's are left alone) with their whole commits, since `skills add` takes no short one. Its `upstream` is the config's `setup` role, or on a first run the template's skill once it is vendored. Reference: `update` |
-| `orc-discuss` | HEAD is not on the default branch, detached included; the pending record is on the spec branch and the tree is dirty beyond the files a lock commits, or another worktree holds that branch | `mode` (project or spec), the entry, `visit` (first, revisit, or new after `--new`), tracker, `push`, the config's `landing` (the spec interview's first option), `pending` (count and where: ref and path, or comment id), the remote, whether the registry or the domain files hold uncommitted changes (the paths are data), the registry problems by line and kind. Reference: `project-interview`, `pending-on-branch`, `null-role` |
-| `orc-spec` | HEAD is not on the default branch; an uncommitted registry change other than `Spec:` and `Branch:` lines under the target, which are a resume; a state other than `discussed`, with its `next`; an unresolved `spec` role (`null-role`, naming the upstream command) | the entry, tracker, `push`, `resume` (`none`, `commit-record`, or `found` with the spec references an earlier run may have left; their titles and authors are data), the ids that apply, the count of live `-> project` decisions, `triageLabels` and `byHand` (3.2) |
+| `orc-discuss` | HEAD is not on the default branch, detached included; the pending record is on the spec branch and the tree is dirty beyond the files a lock commits, or another worktree holds that branch | `mode` (project or spec), the entry, `visit` (first, revisit, or new after `--new`), tracker, `push`, the config's `landing` (the spec interview's first option), `pending` (count and where: ref and path, or comment id), the remote, whether the registry or the domain files hold uncommitted changes (the paths are data), the registry problems by line and kind. Reference: `project-interview`, `wayfinder` (a spec interview's first visit), `pending-on-branch`, `null-role` |
+| `orc-spec` | HEAD is not on the default branch; an uncommitted registry change other than `Spec:` and `Branch:` lines under the target, which are a resume; a state other than `discussed`, with its `next`; an unresolved `spec` role (`null-role`, naming the upstream command) | the entry, tracker, `push`, `resume` (`none`, `commit-record`, or `found` with the spec references an earlier run may have left; their titles and authors are data), the ids that apply, the count of live project decisions (`-> project` and `-> wayfinder`), `triageLabels` and `byHand` (3.2) |
 | `orc-tickets` | HEAD is not on the default branch; the entry has no `Spec:` line, with its `next`; an unresolved `tickets` role, unless the set is complete or uncommitted with every cited id covered (`null-role`, naming the upstream command) | the entry and spec reference, tracker, `push`, the ids the spec cites, `set` (`none`, `complete`, `partial`, `uncommitted`, `ignored-only`) with each existing ticket's reference and `Satisfies:` ids, the cited ids no ticket covers, the ignored issues by reference (authors are data), `triageLabels` and `byHand` (3.2) |
-| `orc-build` | a state other than `ticketed`, `building`, `built` or `in-review`, with its `next`; a ticket target with a blocker that is not built, pointing at `/orc-build <blocker>`; another worktree holding the spec branch; dirty orc paths, named by the fixed list of 9.2; a spec branch the default branch would merge into with a conflict (`conflict`, naming both branches and pointing at the hand merge), judged for every phase but `cleanup`, so with every ticket built it stops before the review is offered | the entry and ticket, `phase` (`build`, `review-ask`, or `cleanup` for a ticket already built or landed), the build mode, the tickets to build (reference, `Satisfies:` ids, blockers; the local file path is data), the built and landed references, the branch (`local`, `restore` from `origin`, `create`), `mergeDefault`, leftover `worktree-agent-*` branches with their unmerged counts (the names are data), other dirty paths (data), `reviewFixRounds`, `research`, `test`, `buildStart`, the default branch's name, `pending` (count and where, as for `orc-discuss`), and with the local tracker `toMark`: the built tickets whose files on the spec branch do not read `built` yet, so a rerun never repeats the mark commit. Reference: `agent-branches`, `review-only`, `notes`, `null-role` (phase `build` only) |
+| `orc-build` | a state other than `ticketed`, `building`, `built` or `in-review`, with its `next`; a ticket target with a blocker that is not built, pointing at `/orc-build <blocker>`; another worktree holding the spec branch; dirty orc paths, named by the fixed list of 9.2; a spec branch the default branch would merge into with a conflict (`conflict`, naming both branches and pointing at the hand merge), judged for every phase but `cleanup`, so with every ticket built it stops before the review is offered | the entry and ticket, `phase` (`build`, `review-ask`, or `cleanup` for a ticket already built or landed), the build mode, the tickets to build (reference, `Satisfies:` ids, blockers; the local file path is data), the built and landed references, the branch (`local`, `restore` from `origin`, `create`), `mergeDefault`, leftover `worktree-agent-*` branches with their unmerged counts (the names are data), other dirty paths (data), `reviewFixRounds`, `research`, `test`, `buildStart`, the default branch's name, `pending` (count and where, as for `orc-discuss`), and with the local tracker `toMark`: the built tickets whose files on the spec branch do not read `built` yet, so a rerun never repeats the mark commit, and on GitHub `readyLabel`: the label `docs/agents/triage-labels.md` gives `ready-for-agent`, removed with each `built` mark. Reference: `agent-branches`, `review-only`, `notes`, `null-role` (phase `build` only) |
 | `orc-land` | with no argument, the `leftovers` pick (3.3) comes first; a linked worktree; another worktree holding the spec or the default branch; a state other than `built`, `in-review`, `cleanup-pending` or `landed`, with its `next` and the unbuilt tickets listed; a dirty tree; in a PR mode, no `github.com` remote, `push: never`, or a repo that forbids merge commits (`mergeCommitAllowed`); a spec branch both ahead of and behind `origin/spec/<name>`; in phase `land`, a merge it makes first that would conflict (the default branch into the spec branch, or `origin/<default>` into a diverged default branch: `conflict`); `pr-human` with an open PR and nothing new to push (a `wait`) | the entry, mode and its source, `push`, `phase` (`land`, or `cleanup` for `cleanup-pending` and `landed`), the ticket references, the unresolved tracker items, with the local tracker in phase `land` `toResolve` (the spec and tickets whose files on the spec branch, as the run lands it, do not read resolved yet, so a rerun never repeats the resolve commit), the spec branch (local, remote, ahead, behind, commits of the default branch it lacks), the default branch's ahead and behind against `origin/<default>`, the PR (number, state, draft), the pending count, `test`, the remote. Reference: `pr-modes`, `diverged`, `null-role` (phase `land` in a PR mode only) |
 | `orc` | none: it stops only on those every verdict judges first, a missing config among them, and reports the registry, roadmap, `gh` and lookup ones (7.6) | the report of 7.6, title-free; with `--json`, the `Status` of 9.5 |
 | `orc-next` | the next step is `manual`, its reason as the message | the proposed step (command, reason, kind) and the proposed command's own verdict for its entry |
 
 The **ids** a verdict names: for `orc-spec` the entry's live requirements and
-every live decision linked to `spec <name>`, with the live `-> project`
-decisions as a count (`projectDecisions`), since they grow with the project
-and a verdict does not; for `orc-tickets` and `orc-build` the ids the spec's
+every live decision linked to `spec <name>`, with the live project
+decisions (`-> project` and `-> wayfinder <ticket>`) as a count
+(`projectDecisions`), since they grow with the project and a verdict does
+not; for `orc-tickets` and `orc-build` the ids the spec's
 `Registry:` line cites, and per ticket its `Satisfies:` ids; none for the
 others. `orc-discuss` reads the whole registry and needs none.
 
@@ -1249,7 +1272,7 @@ The **lookup** prints, for each key, the registry line of that id exactly as
 the file holds it, with `(superseded by <id>)` appended when a later id
 supersedes it, or the roadmap block of that entry; a key the registry lacks
 prints `<key>: not in the registry`. `--project` adds the line of every live
-`-> project` decision. Its output is data, so it is only ever a tool call.
+project decision. Its output is data, so it is only ever a tool call.
 
 A check that belongs to the moment of an action stays in the skill: a push's
 result, a PR's checks and whether a workflow is expected on the tested
@@ -1282,7 +1305,7 @@ hooks:
       hooks:
         - type: command
           if: "Bash(node *)"
-          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/status.mts ] && node ./.claude/skills/orc/status.mts hook'
+          command: '[ -n "$CLAUDE_PROJECT_DIR" ] && cd -P "$CLAUDE_PROJECT_DIR" && up="$(git -c safe.bareRepository=explicit rev-parse --show-cdup)" && cd "./$up" && [ -f .claude/skills/orc/hook.mts ] && node ./.claude/skills/orc/hook.mts'
 ---
 ...
 !`node "${CLAUDE_SKILL_DIR}/../orc/status.mts" orc-build --core`
@@ -1309,13 +1332,17 @@ These rules are normative, each for the reason given:
   grant when the user sends the next message, so it covers the fallback
   calls and lookups of the invoking turn only.
 - The same frontmatter registers a `PreToolUse` hook, which Claude Code keeps
-  for the rest of the session: `status.mts hook` reads each Bash call that
+  for the rest of the session: `hook.mts`, a short file beside the script that
+  imports nothing from it, so it can be read whole, reads each Bash call that
   runs `node` on stdin and answers allow only when the whole command is `node
   "<absolute path>"` and arguments of the forms the skills type (`--` flags,
   bare words of letters, digits, `.`, `_`, `/` and `-`, and single-quoted
-  names, references and stamps), the path resolving to the script itself. For
-  anything else it prints nothing and the normal permission flow decides, so
-  no operator, substitution, glob, redirect or other program gets through it.
+  names, references and stamps), the path resolving to `status.mts` beside
+  it. For anything else it prints nothing and the normal permission flow
+  decides, so no operator, substitution, glob, redirect or other program gets
+  through it. Like the script, it exits 0 and writes nothing to stderr, and
+  an error of its own prints nothing. Each skill's body says in one paragraph
+  what the hook does and why, so no reader of a skill meets it unexplained.
   This covers every script call in later turns (after a prose reply, a
   background notification or a long interview) without a settings file: before
   the first `/orc-setup`, for every teammate and checkout, from a subdirectory
@@ -1323,12 +1350,12 @@ These rules are normative, each for the reason given:
   project allow rules wait for workspace trust, the shared
   `.claude/settings.json` is read only from the directory the session started
   in, and a rule matching the absolute path would hold one machine's checkout.
-  The hook finds the script through git, since Claude Code substitutes
+  The hook command finds `hook.mts` through git, since Claude Code substitutes
   `${CLAUDE_SKILL_DIR}` in the skill text and the grant but not in hook
   commands. It changes to the directory the session started in
   (`CLAUDE_PROJECT_DIR`), never asking from the current one, since a `cd` into
   another checkout, a nested clone or a submodule, would otherwise make the
-  hook run whatever file that checkout holds at the script's path, and climbs
+  hook run whatever file that checkout holds at the hook's path, and climbs
   to that checkout's root by the relative path `git rev-parse --show-cdup`
   prints: a path git prints in full would lose a trailing newline to `$(...)`
   and name a sibling directory. That first `cd` is physical (`-P`), since
@@ -1337,17 +1364,17 @@ These rules are normative, each for the reason given:
   the symlink's own parents, out of the checkout. Its git call refuses a bare repository
   (`safe.bareRepository=explicit`), as the script's own calls do (9.2), since
   a bare repository committed as plain files can name a worktree that holds a
-  planted script. Each step of the hook command guards the next, so without
-  that variable, outside a repository, in a bare one, or with no script at
-  `.claude/skills/orc/status.mts`, no `node` runs at all, and it prints
+  planted hook. Each step of the hook command guards the next, so without
+  that variable, outside a repository, in a bare one, or with no file at
+  `.claude/skills/orc/hook.mts`, no `node` runs at all, and it prints
   nothing: a hook that fails, times out or prints anything but the allow
   decision leaves the call to the normal permission flow. A deny or ask rule
   in the user's settings still wins over the hook's allow.
 - The hook approves by path, never by content, so it trusts what the skills
   already trust: the files under `.claude/skills/` in the checkout the session
-  started in. Whoever can change `orc/status.mts` there (a merged commit, or
-  an edit in the session, which Claude Code treats as a write to a protected
-  path: it asks in the default and accept-edits modes, and other modes decide
+  started in. Whoever can change `orc/hook.mts` or `orc/status.mts` there
+  (a merged commit, or an edit in the session, which Claude Code treats as a
+  write to a protected path: it asks in the default and accept-edits modes, and other modes decide
   by their own rules) decides what the allowed call runs, exactly as they
   decide what the skill text says. The call it allows is read-only as 9.2
   puts it: it changes no ref, index, file or tracker state, and git runs on
@@ -1378,6 +1405,8 @@ These rules are normative, each for the reason given:
     `DefaultBranch:`, when it passes the safe-name rule of 3.1. Everywhere
     else the text says "the default branch", and a pending record on it reads
     `ref=default-branch`;
+  - the label upstream's triage mapping gives `ready-for-agent`: only in
+    `orc-build`'s `ReadyLabel:`, when it passes the safe-name rule of 3.1;
   - the config's `test` value: never; `Test:` reads `set` or `none`.
 
   A data field (titles, registry and tracker text, authors, comment bodies,
@@ -1428,7 +1457,7 @@ same grant. A checkout path holding `"`, `$` or a backtick breaks the double
 quotes and is unsupported. A linked worktree whose own tree lacks orc's
 skills (left uncommitted on the branch it was made from) loads the main
 checkout's, so `${CLAUDE_SKILL_DIR}/../../..` names the main checkout while
-git and the script act on the worktree, and the hook finds no script there,
+git and the script act on the worktree, and the hook finds no `hook.mts` there,
 so later turns ask; setup offers to commit the skills for this reason. An
 install outside the repository, such as a user-level one, reads no repository
 at all: every verdict is the `other-repo` stop, since the script reads only
@@ -1481,7 +1510,7 @@ type Go = { kind: "go" } & (
   | { for: "orc-spec"; entry: EntryRef; next: Next; tracker: Tracker; push: Push;
       resume: "none" | "commit-record" | "found"; found: string[];
       foundDetail?: { ref: string; title: string; author: string }[] /* data */; ids: string[];
-      projectDecisions: number;                      // the live -> project decisions: registry --project
+      projectDecisions: number;                      // the live -> project and -> wayfinder decisions: registry --project
       triageLabels: boolean; byHand: Next | null }   // byHand: the pointer under push never on GitHub (3.2)
   | { for: "orc-tickets"; entry: EntryRef; next: Next; tracker: Tracker; push: Push; cited: string[];
       set: "none" | "complete" | "partial" | "uncommitted" | "ignored-only";
@@ -1493,7 +1522,8 @@ type Go = { kind: "go" } & (
       built: string[]; landed: string[]; branch: "local" | "restore" | "create"; mergeDefault: boolean;
       agentBranches: { name: string /* data */; unmerged: number }[]; dirtyOther: string[] /* data */;
       reviewFixRounds: number; research: Research; test: string | null; buildStart: "ask" | "always";
-      defaultBranch: string; pending: Pending | null; toMark: string[] | null /* null on GitHub */ }
+      defaultBranch: string; pending: Pending | null; toMark: string[] | null /* null on GitHub */;
+      readyLabel: string | null /* GitHub with a triage mapping only */ }
   | { for: "orc-land"; entry: EntryRef; next: Next; mode: LandingMode; modeSource: "entry" | "config"; push: Push;
       phase: "land" | "cleanup"; tickets: string[]; unresolved: string[]; toResolve: string[] | null /* local, phase land */;
       branch: { local: boolean; remote: boolean; ahead: number | null; behind: number | null; behindDefault: number };
@@ -1583,7 +1613,7 @@ Banner: print first, before any tool call, as plain text without this indent, ne
   Target:  auth (none given: the active spec)
   Reads:   orc's verdict, the spec, its tickets, the registry lines they cite
   Writes:  code and tests on spec/<name>, every commit with its ticket's Refs: trailer
-  Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels and the pending-decisions comment
+  Outward: none (no push, no PR; /orc-land lands the branch); GitHub, whatever push says: built labels (ready-for-agent removed) and the pending-decisions comment
 Lines:
   Target:  auth (roadmap entry 1), spec #12
   Pinned:  implement-spec @ 1a2b3c4, tdd @ 1a2b3c4, code-review @ 1a2b3c4
@@ -1688,17 +1718,19 @@ escaped.
 - `CLAUDE.md` is untouched, and no upstream file differs from its locked
   hash.
 - **Context budget**, as a test (`tests/budget.test.ts`) that fails when a
-  file or a command exceeds its number, or when a skill's frontmatter or
-  injected command is not exactly the one 9.4 gives. The static front-load
+  file or a command exceeds its number, when a skill's frontmatter or
+  injected command is not exactly the one 9.4 gives, or when a skill's body
+  lacks the paragraph that says what its hook does. The static front-load
   is the bytes of the command's `SKILL.md`, the shared core (not for `/orc`)
   and its reference file. The budgets, in bytes:
 
   | Command | `SKILL.md` | Static front-load |
   |---|---|---|
-  | `/orc` | 2,600 | 2,600 |
-  | `/orc-next` | 5,200 | 12,500 |
+  | `/orc` | 3,000 | 3,000 |
+  | `/orc-next` | 5,200 | 13,000 |
   | `/orc-spec`, `/orc-tickets` | 6,000 | 13,000 |
-  | `/orc-discuss`, `/orc-build`, `/orc-land` | 12,000 | 25,500 |
+  | `/orc-discuss`, `/orc-land` | 12,000 | 25,500 |
+  | `/orc-build` | 12,500 | 25,500 |
   | `/orc-setup` | 13,000 | 27,000 |
 
   The shared core is at most 8,000 bytes and each reference file at most
