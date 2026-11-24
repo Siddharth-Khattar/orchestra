@@ -4,6 +4,10 @@ All notable changes to orc are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
+Upgrading from 0.1.0: reinstall orc's skills so the new frontmatter and `hook.mts` arrive together, then start a new session, since a session that is already open keeps the old hook. An existing `docs/orc/config.json` keeps its values until you edit it or rerun `/orc-setup`.
+
 ### Added
 
 - A logo, a social preview card and four figures (the pipeline, the traceability chain, the architecture and a command run), each in a light and a dark version, with their sources under `docs/assets/src/`.
@@ -36,5 +40,6 @@ The first public release, and an early one: expect rough edges in interactive us
 - GitHub Issues or local markdown files as the tracker, and three landing modes: `local-merge`, `pr-agent` and `pr-human`.
 - A guide, a command reference, concepts, configuration, troubleshooting and design pages under `docs/`, plus the full specification.
 
-[Unreleased]: https://github.com/Siddharth-Khattar/orchestra/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Siddharth-Khattar/orchestra/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Siddharth-Khattar/orchestra/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Siddharth-Khattar/orchestra/releases/tag/v0.1.0

@@ -47,7 +47,7 @@ What it deliberately leaves out:
 - **No edits to `CLAUDE.md` or `AGENTS.md`.** Orc never creates or changes either file.
 
 > [!NOTE]
-> **Early release (0.1.0).** The status script is covered by an automated test suite, while the commands themselves have been exercised mostly in scripted headless Claude Code sessions, where a script answers the pickers. Interactive use may still show rough edges, such as how a picker reads at a glance. If you hit one, please [open an issue](https://github.com/Siddharth-Khattar/orchestra/issues).
+> **Early release (0.2.0).** The status script is covered by an automated test suite, while the commands themselves have been exercised mostly in scripted headless Claude Code sessions, where a script answers the pickers. Interactive use may still show rough edges, such as how a picker reads at a glance. If you hit one, please [open an issue](https://github.com/Siddharth-Khattar/orchestra/issues).
 
 ## Quick start
 
